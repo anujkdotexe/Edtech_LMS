@@ -1,0 +1,20 @@
+{
+  "name": "gamified-lms-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter=@lms/api dev & pnpm --filter=@lms/web dev",
+    "build": "pnpm --recursive build",
+    "lint": "pnpm --recursive lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "db:migrate": "pnpm --filter=@lms/api db:migrate",
+    "db:seed": "pnpm --filter=@lms/api db:seed"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5"
+  }
+}

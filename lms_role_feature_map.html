@@ -1,0 +1,249 @@
+
+<style>
+  .role-tabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .role-tab { padding:8px 18px; border-radius:var(--border-radius-md); border:0.5px solid var(--color-border-secondary); font-size:13px; font-weight:500; cursor:pointer; background:var(--color-background-secondary); color:var(--color-text-secondary); transition:all .15s; }
+  .role-tab.active-student { background:#EEEDFE; color:#3C3489; border-color:#AFA9EC; }
+  .role-tab.active-admin { background:#E1F5EE; color:#085041; border-color:#5DCAA5; }
+  .role-tab.active-dev { background:#FAEEDA; color:#633806; border-color:#EF9F27; }
+  .section { margin-bottom:20px; }
+  .section-title { font-size:12px; font-weight:500; color:var(--color-text-tertiary); text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px; padding-bottom:6px; border-bottom:0.5px solid var(--color-border-tertiary); }
+  .feature-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; }
+  .feature-card { background:var(--color-background-primary); border:0.5px solid var(--color-border-tertiary); border-radius:var(--border-radius-md); padding:10px 12px; cursor:pointer; transition:border-color .15s; }
+  .feature-card:hover { border-color:var(--color-border-secondary); }
+  .feature-card .fc-label { font-size:13px; font-weight:500; color:var(--color-text-primary); margin-bottom:3px; }
+  .feature-card .fc-desc { font-size:11px; color:var(--color-text-tertiary); line-height:1.4; }
+  .badge { display:inline-block; font-size:10px; font-weight:500; padding:2px 7px; border-radius:99px; margin-top:5px; }
+  .badge-view { background:#E6F1FB; color:#0C447C; }
+  .badge-action { background:#E1F5EE; color:#085041; }
+  .badge-danger { background:#FCEBEB; color:#791F1F; }
+  .badge-admin { background:#EEEDFE; color:#3C3489; }
+  .badge-dev { background:#FAEEDA; color:#633806; }
+  .role-panel { display:none; }
+  .role-panel.active { display:block; }
+  .dev-only-note { font-size:11px; color:var(--color-text-warning); background:var(--color-background-warning); border:0.5px solid var(--color-border-warning); border-radius:var(--border-radius-md); padding:8px 12px; margin-bottom:16px; }
+</style>
+
+<h2 class="sr-only">Role-based feature map for LMS: Student, Admin, and Developer views</h2>
+
+<div class="role-tabs">
+  <button class="role-tab active-student" onclick="switchRole('student',this)">Student</button>
+  <button class="role-tab" onclick="switchRole('admin',this)">Admin</button>
+  <button class="role-tab" onclick="switchRole('dev',this)">Developer</button>
+</div>
+
+<div id="panel-student" class="role-panel active">
+  <div class="section">
+    <div class="section-title">Auth & onboarding</div>
+    <div class="feature-grid">
+      <div class="feature-card" onclick="sendPrompt('How do I implement email + password login with form validation?')"><div class="fc-label">Email login</div><div class="fc-desc">Email + password with validation</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card" onclick="sendPrompt('How do I implement Google OAuth login?')"><div class="fc-label">Google OAuth</div><div class="fc-desc">One-click sign in via Google</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card" onclick="sendPrompt('How do I implement forgot password email flow?')"><div class="fc-label">Forgot password</div><div class="fc-desc">Email link reset flow</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card" onclick="sendPrompt('How do I implement avatar selection on signup?')"><div class="fc-label">Avatar selection</div><div class="fc-desc">Pick from 12 avatars on signup</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Change password</div><div class="fc-desc">Update from profile settings</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Change avatar</div><div class="fc-desc">Re-select avatar anytime</div><span class="badge badge-action">action</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Home & dashboard</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">Personalized greeting</div><div class="fc-desc">Name + time-based message</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Streak counter</div><div class="fc-desc">Current streak + flame indicator</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">XP + level card</div><div class="fc-desc">Total score + level display</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">30-sec warmup</div><div class="fc-desc">Quick vocab timer on open</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Daily tip</div><div class="fc-desc">Rotating learning tip card</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Leaderboard preview</div><div class="fc-desc">Top 3 + your rank card</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Quick links</div><div class="fc-desc">Daily quiz + continue course</div><span class="badge badge-action">action</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Quiz system</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">Quiz catalog</div><div class="fc-desc">14 cards, color-coded difficulty</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Start quiz</div><div class="fc-desc">4-option MCQ, one at a time</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Progress bar</div><div class="fc-desc">Question N of total in-quiz</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Instant feedback</div><div class="fc-desc">Correct/wrong highlight on pick</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Score result screen</div><div class="fc-desc">Final score, try again, exit</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Exit confirmation</div><div class="fc-desc">Warning popup mid-quiz</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Quiz history</div><div class="fc-desc">Past attempts + best scores</div><span class="badge badge-view">view</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Courses & learning</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">Course catalog</div><div class="fc-desc">8 cards, CEFR tags, filter pills</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Course detail</div><div class="fc-desc">Syllabus, module list, stats</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Purchase course</div><div class="fc-desc">Razorpay checkout flow</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Course player</div><div class="fc-desc">Video + PDF lesson viewer</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Progress tracking</div><div class="fc-desc">Lessons completed per course</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Locked state</div><div class="fc-desc">Visual lock on unpurchased</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Purchase history</div><div class="fc-desc">Courses bought + receipts</div><span class="badge badge-view">view</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Gamification & social</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">Full leaderboard</div><div class="fc-desc">Rank, name, streak, score</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">My rank highlight</div><div class="fc-desc">Current user row accented</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Badge showcase</div><div class="fc-desc">7 badges, locked/unlocked</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">XP progress bar</div><div class="fc-desc">Progress to next level</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Activity feed</div><div class="fc-desc">Recent completions timeline</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Stats grid</div><div class="fc-desc">Score, level, streak, rank</div><span class="badge badge-view">view</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="panel-admin" class="role-panel">
+  <div class="section">
+    <div class="section-title">Dashboard overview</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">Revenue summary</div><div class="fc-desc">Total, monthly, daily MRR</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Active students</div><div class="fc-desc">Total + today's logins</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Quiz completions</div><div class="fc-desc">Count + avg score today</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">New signups chart</div><div class="fc-desc">Weekly signup trend graph</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Course enrollment</div><div class="fc-desc">Top courses by students</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Streak leaders</div><div class="fc-desc">Top 5 active streaks</div><span class="badge badge-view">view</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Student management</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">Student list</div><div class="fc-desc">Search, filter, paginate</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Student profile view</div><div class="fc-desc">XP, streak, courses, payment</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Add single student</div><div class="fc-desc">Manual email + name invite</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Bulk import students</div><div class="fc-desc">CSV upload, N students at once</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Assign course</div><div class="fc-desc">Grant access without payment</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Bulk assign course</div><div class="fc-desc">Assign to multiple students</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Revoke course access</div><div class="fc-desc">Remove student from course</div><span class="badge badge-danger">destructive</span></div>
+      <div class="feature-card"><div class="fc-label">Suspend student</div><div class="fc-desc">Disable login temporarily</div><span class="badge badge-danger">destructive</span></div>
+      <div class="feature-card"><div class="fc-label">Delete student</div><div class="fc-desc">Hard delete with confirm dialog</div><span class="badge badge-danger">destructive</span></div>
+      <div class="feature-card"><div class="fc-label">Reset student password</div><div class="fc-desc">Force send reset email</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Export student data</div><div class="fc-desc">CSV export of all students</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Send message</div><div class="fc-desc">Email student directly</div><span class="badge badge-action">action</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Course management</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">Create course</div><div class="fc-desc">Title, CEFR level, price, desc</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Edit course</div><div class="fc-desc">Update meta, pricing, status</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Delete course</div><div class="fc-desc">With enrolled-student warning</div><span class="badge badge-danger">destructive</span></div>
+      <div class="feature-card"><div class="fc-label">Add module</div><div class="fc-desc">Section grouping within course</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Add lesson</div><div class="fc-desc">Video, PDF, or text content</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Upload content</div><div class="fc-desc">PDF, MP4 to Cloudflare R2</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Reorder lessons</div><div class="fc-desc">Drag-and-drop ordering</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Toggle published</div><div class="fc-desc">Draft vs live toggle per course</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Course analytics</div><div class="fc-desc">Completion %, dropout rate</div><span class="badge badge-view">view</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Quiz management</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">Create quiz</div><div class="fc-desc">Title, difficulty, point value</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Add questions</div><div class="fc-desc">MCQ with 4 options + answer</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Edit question</div><div class="fc-desc">Update text, options, answer</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Delete quiz</div><div class="fc-desc">With attempt data warning</div><span class="badge badge-danger">destructive</span></div>
+      <div class="feature-card"><div class="fc-label">Quiz analytics</div><div class="fc-desc">Avg score, fail rate per quiz</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Preview quiz</div><div class="fc-desc">See student-facing view</div><span class="badge badge-view">view</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Payments</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">Payment list</div><div class="fc-desc">All transactions, search/filter</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Successful payments</div><div class="fc-desc">Filter by status: paid</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Failed payments</div><div class="fc-desc">Filter by status: failed</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Pending payments</div><div class="fc-desc">Initiated but unconfirmed</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Refund record</div><div class="fc-desc">View refunds issued</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Issue refund</div><div class="fc-desc">Trigger via Razorpay API</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Payment detail</div><div class="fc-desc">Order ID, amount, student, time</div><span class="badge badge-view">view</span></div>
+      <div class="feature-card"><div class="fc-label">Revenue export</div><div class="fc-desc">Download CSV by date range</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Manual enrollment</div><div class="fc-desc">Grant access bypassing payment</div><span class="badge badge-action">action</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Content & site settings</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">Edit daily tips</div><div class="fc-desc">Add/remove rotating tip cards</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Manage badges</div><div class="fc-desc">Edit badge names + conditions</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Announcement banner</div><div class="fc-desc">Site-wide message to students</div><span class="badge badge-action">action</span></div>
+      <div class="feature-card"><div class="fc-label">Email templates</div><div class="fc-desc">Edit welcome/streak emails</div><span class="badge badge-action">action</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="panel-dev" class="role-panel">
+  <div class="dev-only-note">Developer role includes everything in Admin, plus the sections below. Never expose this panel to students or admins.</div>
+  <div class="section">
+    <div class="section-title">Everything in admin +</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">All admin features</div><div class="fc-desc">Full student, course, quiz, payment management</div><span class="badge badge-admin">inherited</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">System logs</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">API request logs</div><div class="fc-desc">Method, route, status, latency</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Error logs</div><div class="fc-desc">Stack traces from Sentry</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Auth event log</div><div class="fc-desc">Logins, logouts, token refresh</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Webhook log</div><div class="fc-desc">Razorpay events in/out</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Cron job log</div><div class="fc-desc">Streak + leaderboard run history</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Queue monitor</div><div class="fc-desc">BullMQ/QStash job status</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">DB query log</div><div class="fc-desc">Slow query + N+1 detection</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Storage log</div><div class="fc-desc">R2 upload/delete events</div><span class="badge badge-dev">dev only</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">User & account tools</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">Impersonate user</div><div class="fc-desc">Log in as any student to debug</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Manually award XP</div><div class="fc-desc">Override XP for any user</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Reset streak</div><div class="fc-desc">Zero out streak for testing</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Force badge unlock</div><div class="fc-desc">Grant any badge to any user</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">JWT inspector</div><div class="fc-desc">Decode + validate tokens</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Role editor</div><div class="fc-desc">Change any user's role</div><span class="badge badge-danger">destructive</span></div>
+      <div class="feature-card"><div class="fc-label">Hard delete user</div><div class="fc-desc">Purge all data permanently</div><span class="badge badge-danger">destructive</span></div>
+      <div class="feature-card"><div class="fc-label">Audit log</div><div class="fc-desc">Who did what + timestamp</div><span class="badge badge-dev">dev only</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Payment & finance debug</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">Raw webhook payload</div><div class="fc-desc">Full Razorpay JSON events</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Retry failed payment</div><div class="fc-desc">Re-trigger webhook processing</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Test payment mode</div><div class="fc-desc">Toggle Razorpay test/live key</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Payment reconciliation</div><div class="fc-desc">DB vs Razorpay diff report</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Force enrollment</div><div class="fc-desc">Grant course ignoring payment</div><span class="badge badge-dev">dev only</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">System & infrastructure</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">Environment config</div><div class="fc-desc">View (not edit) env var names</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">DB health check</div><div class="fc-desc">Ping + connection pool status</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Cache inspector</div><div class="fc-desc">Redis key browser + TTL</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Storage browser</div><div class="fc-desc">R2 bucket file tree</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Seed database</div><div class="fc-desc">Load test data in staging</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Feature flags</div><div class="fc-desc">Toggle features without deploy</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Run migration</div><div class="fc-desc">Trigger Drizzle DB migration</div><span class="badge badge-danger">destructive</span></div>
+      <div class="feature-card"><div class="fc-label">System health</div><div class="fc-desc">API, DB, Redis uptime status</div><span class="badge badge-dev">dev only</span></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Analytics & reporting</div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="fc-label">PostHog events</div><div class="fc-desc">Raw event stream + funnels</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Performance metrics</div><div class="fc-desc">P50/P95/P99 API latency</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Error rate chart</div><div class="fc-desc">5xx rate over time</div><span class="badge badge-dev">dev only</span></div>
+      <div class="feature-card"><div class="fc-label">Retention cohorts</div><div class="fc-desc">Week-1 / week-4 retention</div><span class="badge badge-dev">dev only</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchRole(role, btn) {
+  document.querySelectorAll('.role-tab').forEach(t => t.className = 'role-tab');
+  document.querySelectorAll('.role-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active-' + role);
+  document.getElementById('panel-' + role).classList.add('active');
+}
+</script>

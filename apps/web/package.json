@@ -1,0 +1,32 @@
+{
+  "name": "@lms/web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@lms/api-contracts": "workspace:*",
+    "@lms/types": "workspace:*",
+    "@lms/utils": "workspace:*",
+    "@lms/validations": "workspace:*",
+    "framer-motion": "^11.0.3",
+    "lucide-react": "^1.16.0",
+    "next": "^14.1.0",
+    "next-intl": "^3.9.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.5.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  }
+}
