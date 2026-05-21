@@ -50,3 +50,5 @@ Thumbs.db
 # Local uploads and public storage
 /apps/api/public/uploads/*
 !/apps/api/public/uploads/.gitkeep
+/docs/audits/implementation-audit-report.md
+/prompt.md 

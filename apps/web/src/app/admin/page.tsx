@@ -7,6 +7,7 @@ import {
   BookOpen, Plus, Pencil, Trash2, Users, CreditCard, BarChart3, 
   Sparkles, CheckCircle2, AlertCircle, RefreshCw, Upload, ShieldAlert, Award, ArrowUpRight
 } from 'lucide-react';
+import Link from 'next/link';
 
 interface Course {
   id: string;
@@ -27,13 +28,20 @@ interface Student {
   level: number;
 }
 
+interface AnalyticsDashboard {
+  totalStudents: number;
+  totalRevenue: number;
+  weeklySignups: { date: string; count: number }[];
+  streakLeaders: { id: string; name: string; avatarUrl: string; streak: number }[];
+}
+
 export default function AdminDashboardPage() {
   const { user, isAuthenticated } = useAuthStore();
   const [courses, setCourses] = useState<Course[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   
-  // UI Tabs state: 'overview' | 'courses' | 'students'
-  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'students'>('overview');
+  // UI Tabs state: 'overview' | 'courses' | 'students' | 'quizzes'
+  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'students' | 'quizzes'>('overview');
   
   // Loading & Errors
   const [loadingCourses, setLoadingCourses] = useState(false);
@@ -68,12 +76,24 @@ export default function AdminDashboardPage() {
   const [overriding, setOverriding] = useState(false);
   const [overrideSuccess, setOverrideSuccess] = useState<string | null>(null);
 
+  const [dashboardData, setDashboardData] = useState<AnalyticsDashboard | null>(null);
+
   useEffect(() => {
     if (isAuthenticated && ['ADMIN', 'DEVELOPER'].includes(user?.role || '')) {
+      loadDashboard();
       loadCourses();
       loadStudents();
     }
   }, [isAuthenticated, user]);
+
+  const loadDashboard = async () => {
+    try {
+      const data = await apiFetch<AnalyticsDashboard>('/api/admin/analytics/dashboard');
+      setDashboardData(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const loadCourses = async () => {
     setLoadingCourses(true);
@@ -311,6 +331,16 @@ export default function AdminDashboardPage() {
             <Users className="w-4 h-4" /> CRM Students & Onboarding
           </span>
         </button>
+        <button
+          onClick={() => setActiveTab('quizzes')}
+          className={`pb-3 px-1 border-b-2 transition ${
+            activeTab === 'quizzes' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Award className="w-4 h-4" /> Quiz Catalog
+          </span>
+        </button>
       </div>
 
       {/* SUCCESS POPUPS */}
@@ -323,68 +353,112 @@ export default function AdminDashboardPage() {
 
       {/* TAB CONTENTS */}
       
-      {/* 1. OVERVIEW DASHBOARD */}
-      {activeTab === 'overview' && (
+      {/* 1. OVERVIEW DASHBOARD TAB */}
+      {activeTab === 'overview' && dashboardData && (
         <div className="space-y-6">
-          {/* Status Metrics Boxes */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-premium space-y-2">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Simulated MRR Revenue</span>
-              <div className="flex justify-between items-center">
-                <span className="text-2xl font-black font-display text-slate-800">$199.90</span>
-                <span className="bg-emerald-50 text-emerald-600 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                  <ArrowUpRight className="w-3 h-3" /> +12.4%
-                </span>
+          {/* Quick Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-premium">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm text-slate-500 uppercase tracking-wider">Revenue</h3>
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-emerald-500" />
+                </div>
               </div>
+              <p className="text-3xl font-extrabold text-slate-800">${dashboardData.totalRevenue.toFixed(2)}</p>
+              <p className="text-xs text-emerald-600 font-bold mt-2 flex items-center gap-1">
+                <ArrowUpRight className="w-3 h-3" /> +12.5% vs last month
+              </p>
             </div>
-            <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-premium space-y-2">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Total Sales</span>
-              <div className="flex justify-between items-center">
-                <span className="text-2xl font-black font-display text-slate-800">$480.00</span>
-                <span className="bg-emerald-50 text-emerald-600 text-[10px] font-extrabold px-2 py-0.5 rounded-full">Seeded</span>
+
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-premium">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm text-slate-500 uppercase tracking-wider">Active Students</h3>
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-blue-500" />
+                </div>
               </div>
+              <p className="text-3xl font-extrabold text-slate-800">{dashboardData.totalStudents}</p>
+              <p className="text-xs text-blue-600 font-bold mt-2 flex items-center gap-1">
+                <ArrowUpRight className="w-3 h-3" /> +5% vs last month
+              </p>
             </div>
-            <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-premium space-y-2">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Active Students</span>
-              <div className="flex justify-between items-center">
-                <span className="text-2xl font-black font-display text-slate-800">{students.length || 3}</span>
-                <span className="bg-indigo-50 text-indigo-600 text-[10px] font-extrabold px-2 py-0.5 rounded-full">Roster</span>
+
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-premium">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm text-slate-500 uppercase tracking-wider">Course Signups</h3>
+                <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-purple-500" />
+                </div>
               </div>
+              <p className="text-3xl font-extrabold text-slate-800">{dashboardData.totalStudents}</p>
             </div>
-            <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-premium space-y-2">
-              <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Daily Quiz Submits</span>
-              <div className="flex justify-between items-center">
-                <span className="text-2xl font-black font-display text-slate-800">48</span>
-                <span className="bg-emerald-50 text-emerald-600 text-[10px] font-extrabold px-2 py-0.5 rounded-full">100% pass</span>
+
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-premium">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm text-slate-500 uppercase tracking-wider">Avg. Completion</h3>
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center">
+                  <Award className="w-5 h-5 text-amber-500" />
+                </div>
               </div>
+              <p className="text-3xl font-extrabold text-slate-800">42%</p>
             </div>
           </div>
 
-          {/* Weekly Signups chart vector */}
-          <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-premium space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-50 pb-3">
-              <h3 className="font-display font-extrabold text-sm text-slate-800 uppercase tracking-wider">Weekly Onboarding Signups Trend</h3>
-              <span className="text-[10px] text-slate-400 font-bold uppercase">7-Day Sweep</span>
+          {/* Charts & Lists Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-white border border-slate-100 rounded-3xl p-6 shadow-premium">
+              <h3 className="font-extrabold text-lg text-slate-800 mb-6 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-primary" /> Weekly Signups
+              </h3>
+              {/* Dynamic bar chart visualization */}
+              <div className="h-64 flex items-end justify-between gap-2 px-2">
+                {dashboardData.weeklySignups.map((day, i) => {
+                  const maxCount = Math.max(...dashboardData.weeklySignups.map(d => d.count), 1);
+                  const heightPercentage = (day.count / maxCount) * 100;
+                  return (
+                    <div key={i} className="flex flex-col items-center flex-1 gap-2 group">
+                      <div 
+                        className="w-full bg-primary/20 rounded-t-xl group-hover:bg-primary transition-colors relative"
+                        style={{ height: `${heightPercentage}%`, minHeight: '4px' }}
+                      >
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none">
+                          {day.count} signups
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-slate-400 uppercase">{day.date}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="pt-4 flex items-end justify-between h-48 max-w-xl mx-auto px-4 bg-slate-50/50 rounded-2xl border border-slate-100/50">
-              {[
-                { day: 'Mon', count: 12, height: '30%' },
-                { day: 'Tue', count: 18, height: '45%' },
-                { day: 'Wed', count: 24, height: '60%' },
-                { day: 'Thu', count: 15, height: '38%' },
-                { day: 'Fri', count: 32, height: '80%' },
-                { day: 'Sat', count: 40, height: '100%' },
-                { day: 'Sun', count: 28, height: '70%' },
-              ].map((item, idx) => (
-                <div key={idx} className="flex flex-col items-center gap-2 w-12 shrink-0">
-                  <span className="text-[10px] text-slate-400 font-bold">{item.count}</span>
-                  <div 
-                    className="w-4 bg-primary hover:bg-primary-hover rounded-t-md transition-all duration-300"
-                    style={{ height: item.height }}
-                  ></div>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase pt-1">{item.day}</span>
-                </div>
-              ))}
+
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-premium">
+              <h3 className="font-extrabold text-lg text-slate-800 mb-6 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-500" /> Streak Leaders
+              </h3>
+              <div className="space-y-4">
+                {dashboardData.streakLeaders.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-4">No active streaks yet.</p>
+                ) : (
+                  dashboardData.streakLeaders.map((leader, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="relative">
+                        <img src={leader.avatarUrl || '/avatars/default.svg'} alt={leader.name} className="w-10 h-10 rounded-full border-2 border-slate-100" />
+                        <div className="absolute -top-2 -right-2 w-5 h-5 bg-amber-100 border border-amber-200 rounded-full flex items-center justify-center text-[10px] font-bold text-amber-700">
+                          #{i + 1}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-slate-800">{leader.name}</p>
+                        <p className="text-[10px] font-bold text-amber-600 flex items-center gap-1">
+                          <span className="text-amber-500">🔥</span> {leader.streak} Day Streak
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -441,6 +515,12 @@ export default function AdminDashboardPage() {
                       </td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex gap-2 justify-end">
+                          <Link 
+                            href={`/admin/courses/${course.id}`}
+                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-1 px-3 rounded-lg border border-indigo-100 transition active:scale-95"
+                          >
+                            Manage Content
+                          </Link>
                           <button
                             onClick={() => openEditModal(course)}
                             className="p-1.5 text-slate-400 hover:text-slate-600 border border-slate-100 hover:bg-slate-50 rounded-lg transition"

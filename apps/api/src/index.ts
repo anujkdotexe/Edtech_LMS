@@ -5,14 +5,18 @@ import fastifyStatic from '@fastify/static';
 import path from 'path';
 import fs from 'fs';
 import { serverEnv } from './config';
-import { signupHandler, loginHandler, refreshHandler, logoutHandler } from './modules/auth/auth.handlers';
+import { signupHandler, loginHandler, refreshHandler, logoutHandler, forgotPasswordHandler, resetPasswordHandler } from './modules/auth/auth.handlers';
 import { verifyJWT, checkRole } from './modules/auth/auth.middleware';
 import { impersonateHandler, unimpersonateHandler, getAuditLogsHandler, getSystemHealthHandler, adminOverrideHandler } from './modules/dev/dev.handlers';
 import { importStudentsHandler } from './modules/admin/admin.handlers';
 import { getCoursesHandler, getCourseByIdHandler, purchaseCourseHandler, createCourseHandler, updateCourseHandler, deleteCourseHandler } from './modules/courses/courses.handlers';
 import { getQuizzesHandler, getQuizQuestionsHandler, submitQuizAnswersHandler } from './modules/quizzes/quizzes.handlers';
+import { createModuleHandler, updateModuleHandler, deleteModuleHandler, createLessonHandler, updateLessonHandler, deleteLessonHandler, uploadLessonFileHandler } from './modules/admin/content.handlers';
+import { createQuizHandler, updateQuizHandler, deleteQuizHandler, createQuestionHandler, updateQuestionHandler, deleteQuestionHandler } from './modules/admin/quiz.handlers';
+import { getDashboardAnalyticsHandler } from './modules/admin/analytics.handlers';
 import { getProfileHandler, updateProfileHandler } from './modules/profile/profile.handlers';
 import { getLeaderboardHandler } from './modules/leaderboard/leaderboard.handlers';
+import fastifyMultipart from '@fastify/multipart';
 
 const server = fastify({
   logger: true,
@@ -26,6 +30,11 @@ if (!fs.existsSync(absoluteUploadDir)) {
 
 // 1. Register Plugins
 server.register(cookie);
+server.register(fastifyMultipart, {
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB limit for PDFs/MP4s
+  }
+});
 
 server.register(cors, {
   origin: [serverEnv.FRONTEND_URL],
@@ -48,6 +57,8 @@ server.post('/api/auth/signup', signupHandler);
 server.post('/api/auth/login', loginHandler);
 server.post('/api/auth/refresh', refreshHandler);
 server.post('/api/auth/logout', logoutHandler);
+server.post('/api/auth/forgot-password', forgotPasswordHandler);
+server.post('/api/auth/reset-password', resetPasswordHandler);
 
 // 3. Syllabus & Course Catalog Router
 server.get('/api/courses', getCoursesHandler);
@@ -119,6 +130,68 @@ server.post('/api/dev/monitoring/override', {
 server.post('/api/admin/students/import', {
   preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
   handler: importStudentsHandler,
+});
+
+// 9. Admin Content Management Router (Protected)
+server.post('/api/admin/courses/:id/modules', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: createModuleHandler,
+});
+server.put('/api/admin/modules/:id', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: updateModuleHandler,
+});
+server.delete('/api/admin/modules/:id', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: deleteModuleHandler,
+});
+server.post('/api/admin/modules/:moduleId/lessons', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: createLessonHandler,
+});
+server.put('/api/admin/lessons/:id', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: updateLessonHandler,
+});
+server.delete('/api/admin/lessons/:id', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: deleteLessonHandler,
+});
+server.put('/api/admin/lessons/:id/upload', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: uploadLessonFileHandler,
+});
+
+// 10. Admin Quiz Management Router (Protected)
+server.post('/api/admin/quizzes', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: createQuizHandler,
+});
+server.put('/api/admin/quizzes/:id', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: updateQuizHandler,
+});
+server.delete('/api/admin/quizzes/:id', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: deleteQuizHandler,
+});
+server.post('/api/admin/quizzes/:id/questions', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: createQuestionHandler,
+});
+server.put('/api/admin/questions/:questionId', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: updateQuestionHandler,
+});
+server.delete('/api/admin/questions/:questionId', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: deleteQuestionHandler,
+});
+
+// 11. Admin Analytics Router (Protected)
+server.get('/api/admin/analytics/dashboard', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: getDashboardAnalyticsHandler,
 });
 
 // Start Server

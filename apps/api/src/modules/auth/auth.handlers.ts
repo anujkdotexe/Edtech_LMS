@@ -175,3 +175,35 @@ export const logoutHandler = async (request: FastifyRequest, reply: FastifyReply
 
   reply.status(200).send({ success: true, message: 'Logged out successfully' });
 };
+
+// 5. FORGOT PASSWORD HANDLER
+export const forgotPasswordHandler = async (request: FastifyRequest, reply: FastifyReply) => {
+  const { email } = request.body as { email: string };
+  try {
+    const users = await db.select().from(schema.users).where(eq(schema.users.email, email)).limit(1);
+    if (users.length > 0) {
+      const user = users[0];
+      const resetToken = jwt.sign({ userId: user.id }, serverEnv.JWT_SECRET, { expiresIn: '1h' });
+      // In a real app, send an email here via AWS SES or Resend
+      console.log(`\n\n=== MOCK EMAIL SERVICE ===\nTo: ${email}\nSubject: Password Reset\nLink: ${serverEnv.FRONTEND_URL}/reset-password?token=${resetToken}\n==========================\n`);
+    }
+    // Always return success to prevent email enumeration
+    reply.status(200).send({ success: true, message: 'If an account exists, a reset link was sent.' });
+  } catch (err) {
+    request.log.error(err);
+    reply.status(500).send({ error: 'Internal Server Error' });
+  }
+};
+
+// 6. RESET PASSWORD HANDLER
+export const resetPasswordHandler = async (request: FastifyRequest, reply: FastifyReply) => {
+  const { token, newPassword } = request.body as { token: string; newPassword: string };
+  try {
+    const decoded = jwt.verify(token, serverEnv.JWT_SECRET) as { userId: string };
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await db.update(schema.users).set({ passwordHash }).where(eq(schema.users.id, decoded.userId));
+    reply.status(200).send({ success: true, message: 'Password updated successfully' });
+  } catch (err) {
+    reply.status(400).send({ error: 'Bad Request', message: 'Invalid or expired token' });
+  }
+};

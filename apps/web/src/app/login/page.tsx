@@ -25,7 +25,10 @@ export default function LoginPage() {
   const router = useRouter();
   const { login, signup, error, clearError } = useAuthStore();
   
-  const [forgotSuccess, setForgotSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [forgotPasswordMsg, setForgotPasswordMsg] = useState('');
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -38,14 +41,12 @@ export default function LoginPage() {
   const toggleMode = () => {
     setIsSignUp(!isSignUp);
     setFormError(null);
-    setForgotSuccess(null);
     clearError();
   };
 
   const handleQuickLogin = async (quickEmail: string) => {
     setSubmitting(true);
     setFormError(null);
-    setForgotSuccess(null);
     try {
       await login({ email: quickEmail, password: 'password123' });
       router.push('/');
@@ -59,7 +60,6 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setSubmitting(true);
     setFormError(null);
-    setForgotSuccess(null);
     try {
       // Simulate Google OAuth
       await login({ email: 'student@lms.local', password: 'password123' });
@@ -71,20 +71,30 @@ export default function LoginPage() {
     }
   };
 
-  const handleForgotPassword = () => {
-    setFormError(null);
-    setForgotSuccess(null);
-    if (!email) {
-      setFormError('Please input your email address above first to dispatch a reset link.');
-      return;
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setForgotPasswordMsg('');
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:4000/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to request reset');
+      setForgotPasswordMsg(data.message);
+    } catch (err: any) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
     }
-    setForgotSuccess(`A sandbox reset passcode link has been dispatched to ${email}! Check simulated inbox logs.`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-    setForgotSuccess(null);
 
     if (!email || !password || (isSignUp && !name)) {
       setFormError('Please fill out all required fields.');
@@ -107,7 +117,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[80vh] flex flex-col justify-center items-center py-6 px-4">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-grid-pattern relative">
       
       {/* Brand Header */}
       <div className="text-center mb-8 flex flex-col items-center">
@@ -123,7 +133,7 @@ export default function LoginPage() {
       </div>
 
       {/* Main Form Card */}
-      <div className="w-full max-w-md bg-white border border-slate-100 rounded-2xl shadow-premium p-8 relative overflow-hidden transition-all duration-300">
+      <div className="w-full max-w-md bg-white border border-slate-100 rounded-2xl shadow-premium p-8 relative overflow-hidden transition-all duration-300 mx-auto">
         
         {/* Decorative corner blur */}
         <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full filter blur-xl"></div>
@@ -186,15 +196,9 @@ export default function LoginPage() {
         </div>
 
         {/* Error / Success message displays */}
-        {(formError || error) && (
+        {(formError || error || errorMsg) && (
           <div className="bg-red-50 border-l-4 border-red-500 text-red-705 p-3.5 rounded-xl mb-5 text-xs font-semibold">
-            <span>{formError || error}</span>
-          </div>
-        )}
-
-        {forgotSuccess && (
-          <div className="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-755 p-3.5 rounded-xl mb-5 text-xs font-semibold">
-            <span>{forgotSuccess}</span>
+            <span>{formError || error || errorMsg}</span>
           </div>
         )}
 
@@ -234,32 +238,23 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-center">
+          {!isSignUp && (
+            <div className="space-y-1.5">
               <label htmlFor="password-input" className="text-xs font-bold text-slate-500 uppercase tracking-wide">Security Password</label>
-              {!isSignUp && (
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-xs text-primary hover:text-primary-hover font-bold hover:underline"
-                >
-                  Forgot password?
-                </button>
-              )}
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+                <input 
+                  type="password" 
+                  id="password-input"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200/80 rounded-xl text-slate-800 text-sm focus:outline-none focus:border-primary focus:bg-white transition"
+                  required
+                />
+              </div>
             </div>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
-              <input 
-                type="password" 
-                id="password-input"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200/80 rounded-xl text-slate-800 text-sm focus:outline-none focus:border-primary focus:bg-white transition"
-                required
-              />
-            </div>
-          </div>
+          )}
 
           {/* Dynamic Avatar Selectors in Signup Mode */}
           {isSignUp && (
@@ -305,13 +300,22 @@ export default function LoginPage() {
           </button>
         </form>
 
+        <div className="mt-6 flex items-center justify-between text-sm font-medium">
+          <button 
+            type="button"
+            onClick={() => { setForgotPasswordMode(true); setErrorMsg(''); setForgotPasswordMsg(''); }}
+            className="text-primary hover:text-primary-hover hover:underline"
+          >
+            Forgot your password?
+          </button>
+        </div>
+
         {/* Separator */}
         <div className="relative my-8 text-center">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-          <span className="relative bg-white px-3.5 text-slate-400 text-xs font-bold uppercase tracking-wider">Quick Accounts (Seed Users)</span>
+          <span className="relative bg-white px-3.5 text-slate-400 text-xs font-bold uppercase tracking-wider">Quick Accounts</span>
         </div>
 
-        {/* Seed logs and quick developer shortcuts */}
         <div className="grid grid-cols-3 gap-2.5">
           <button 
             type="button"
@@ -320,9 +324,7 @@ export default function LoginPage() {
             className="flex flex-col items-center justify-center bg-slate-50 border border-slate-100 hover:border-primary/30 hover:bg-primary/5 p-2 rounded-xl text-center group transition"
           >
             <span className="text-xs font-extrabold text-slate-700 leading-tight group-hover:text-primary">Student</span>
-            <span className="text-[9px] text-slate-400">student@lms.local</span>
           </button>
-
           <button 
             type="button"
             onClick={() => handleQuickLogin('admin@lms.local')}
@@ -330,9 +332,7 @@ export default function LoginPage() {
             className="flex flex-col items-center justify-center bg-slate-50 border border-slate-100 hover:border-sky-500/30 hover:bg-sky-50 p-2 rounded-xl text-center group transition"
           >
             <span className="text-xs font-extrabold text-slate-700 leading-tight group-hover:text-sky-600">Admin</span>
-            <span className="text-[9px] text-slate-400">admin@lms.local</span>
           </button>
-
           <button 
             type="button"
             onClick={() => handleQuickLogin('developer@lms.local')}
@@ -340,11 +340,42 @@ export default function LoginPage() {
             className="flex flex-col items-center justify-center bg-slate-50 border border-slate-100 hover:border-amber-500/30 hover:bg-amber-50 p-2 rounded-xl text-center group transition"
           >
             <span className="text-xs font-extrabold text-slate-700 leading-tight group-hover:text-amber-600">Developer</span>
-            <span className="text-[9px] text-slate-400">developer@lms.local</span>
           </button>
         </div>
-
       </div>
+
+      {/* Forgot Password Modal */}
+      {forgotPasswordMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-xl">
+            <h3 className="font-bold text-xl mb-2 text-slate-800">Reset Password</h3>
+            <p className="text-xs text-slate-500 mb-6">Enter your email address to receive a password reset link.</p>
+            
+            {forgotPasswordMsg && (
+              <div className="bg-emerald-50 text-emerald-700 text-xs font-bold p-3 rounded-xl mb-4">
+                {forgotPasswordMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <input 
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email address"
+                className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm focus:border-primary outline-none"
+              />
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setForgotPasswordMode(false)} className="px-4 py-2 text-sm text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
+                <button type="submit" disabled={loading} className="bg-primary text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-primary-hover active:scale-95 disabled:opacity-50">
+                  {loading ? 'Sending...' : 'Send Reset Link'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
