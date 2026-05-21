@@ -44,6 +44,12 @@ interface StudentRef {
   level: number;
 }
 
+interface AdvancedLogs {
+  dbQueries: { time: string; query: string; duration: string }[];
+  webhooks: { time: string; event: string; payload: string; status: string }[];
+  storage: { time: string; action: string; path: string; size: string }[];
+}
+
 export default function DevConsolePage() {
   const router = useRouter();
   const { user, isAuthenticated, fetchProfile } = useAuthStore();
@@ -55,6 +61,7 @@ export default function DevConsolePage() {
   const [students, setStudents] = useState<StudentRef[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [health, setHealth] = useState<SystemHealth | null>(null);
+  const [advancedLogs, setAdvancedLogs] = useState<AdvancedLogs | null>(null);
 
   // Impersonation state
   const [targetEmail, setTargetEmail] = useState('');
@@ -99,6 +106,10 @@ export default function DevConsolePage() {
       // 3. Fetch Audit Logs
       const logsRes = await apiFetch<AuditLog[]>('/api/dev/monitoring/logs');
       setAuditLogs(logsRes);
+
+      // 4. Fetch Advanced Logs
+      const advLogsRes = await apiFetch<AdvancedLogs>('/api/dev/monitoring/advanced-logs');
+      setAdvancedLogs(advLogsRes);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to initialize developer dashboard data');
     } finally {
@@ -518,6 +529,58 @@ export default function DevConsolePage() {
                   </div>
                 </div>
               </div>
+
+              {/* Advanced Logs (Mock) */}
+              {advancedLogs && (
+                <div className="space-y-6 pt-4 border-t border-slate-100">
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                      Mock DB Query Log
+                    </h4>
+                    <div className="bg-slate-900 border rounded-xl overflow-hidden p-3 font-mono text-[10px] text-emerald-400 space-y-1">
+                      {advancedLogs.dbQueries.map((log, i) => (
+                        <div key={i} className="flex gap-4">
+                          <span className="text-slate-500 w-32 shrink-0">{new Date(log.time).toLocaleTimeString()}</span>
+                          <span className="flex-1">{log.query}</span>
+                          <span className="text-amber-400">{log.duration}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                      Mock Webhook Events
+                    </h4>
+                    <div className="bg-slate-900 border rounded-xl overflow-hidden p-3 font-mono text-[10px] text-blue-400 space-y-1">
+                      {advancedLogs.webhooks.map((log, i) => (
+                        <div key={i} className="flex gap-4">
+                          <span className="text-slate-500 w-32 shrink-0">{new Date(log.time).toLocaleTimeString()}</span>
+                          <span className="text-pink-400 w-32 shrink-0">{log.event}</span>
+                          <span className="flex-1 text-slate-300">{log.payload}</span>
+                          <span className="text-emerald-400">{log.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                      Mock Storage Engine Log
+                    </h4>
+                    <div className="bg-slate-900 border rounded-xl overflow-hidden p-3 font-mono text-[10px] text-purple-400 space-y-1">
+                      {advancedLogs.storage.map((log, i) => (
+                        <div key={i} className="flex gap-4">
+                          <span className="text-slate-500 w-32 shrink-0">{new Date(log.time).toLocaleTimeString()}</span>
+                          <span className="text-amber-400 w-24 shrink-0">{log.action}</span>
+                          <span className="flex-1 text-slate-300">{log.path}</span>
+                          <span className="text-emerald-400">{log.size}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
             </div>
           )}

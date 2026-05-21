@@ -7,8 +7,11 @@ import fs from 'fs';
 import { serverEnv } from './config';
 import { signupHandler, loginHandler, refreshHandler, logoutHandler, forgotPasswordHandler, resetPasswordHandler } from './modules/auth/auth.handlers';
 import { verifyJWT, checkRole } from './modules/auth/auth.middleware';
-import { impersonateHandler, unimpersonateHandler, getAuditLogsHandler, getSystemHealthHandler, adminOverrideHandler } from './modules/dev/dev.handlers';
+import { impersonateHandler, unimpersonateHandler, getAuditLogsHandler, getSystemHealthHandler, adminOverrideHandler, getAdvancedLogsHandler } from './modules/dev/dev.handlers';
 import { importStudentsHandler } from './modules/admin/admin.handlers';
+import { getStudentsHandler, suspendStudentHandler, resetStudentPasswordHandler } from './modules/admin/students.handlers';
+import { getPaymentsHandler, issueRefundHandler } from './modules/admin/payments.handlers';
+import { getSiteSettingsHandler, updateSiteSettingsHandler } from './modules/admin/settings.handlers';
 import { getCoursesHandler, getCourseByIdHandler, purchaseCourseHandler, createCourseHandler, updateCourseHandler, deleteCourseHandler } from './modules/courses/courses.handlers';
 import { getQuizzesHandler, getQuizQuestionsHandler, submitQuizAnswersHandler } from './modules/quizzes/quizzes.handlers';
 import { createModuleHandler, updateModuleHandler, deleteModuleHandler, createLessonHandler, updateLessonHandler, deleteLessonHandler, uploadLessonFileHandler } from './modules/admin/content.handlers';
@@ -125,11 +128,47 @@ server.post('/api/dev/monitoring/override', {
   preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
   handler: adminOverrideHandler,
 });
+server.get('/api/dev/monitoring/advanced-logs', {
+  preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
+  handler: getAdvancedLogsHandler,
+});
 
 // 8. Onboarding CRM Admin Router (Protected)
 server.post('/api/admin/students/import', {
   preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
   handler: importStudentsHandler,
+});
+server.get('/api/admin/students', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: getStudentsHandler,
+});
+server.post('/api/admin/students/:id/suspend', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: suspendStudentHandler,
+});
+server.post('/api/admin/students/:id/reset-password', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: resetStudentPasswordHandler,
+});
+
+// 8.5 Admin Payments Router (Protected)
+server.get('/api/admin/payments', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: getPaymentsHandler,
+});
+server.post('/api/admin/payments/:id/refund', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: issueRefundHandler,
+});
+
+// 8.6 Admin Site Settings Router (Protected)
+server.get('/api/admin/settings', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: getSiteSettingsHandler,
+});
+server.put('/api/admin/settings', {
+  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+  handler: updateSiteSettingsHandler,
 });
 
 // 9. Admin Content Management Router (Protected)

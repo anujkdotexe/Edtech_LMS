@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 
@@ -56,6 +56,50 @@ export const getProfileHandler = async (request: FastifyRequest, reply: FastifyR
       };
     });
 
+    // 6. Fetch Purchase History
+    const purchases = await db.select({
+      id: schema.orders.id,
+      amount: schema.orders.amount,
+      createdAt: schema.orders.createdAt,
+      courseTitle: schema.courseTranslations.title
+    })
+    .from(schema.orders)
+    .innerJoin(schema.courseTranslations, eq(schema.orders.courseId, schema.courseTranslations.courseId))
+    .where(eq(schema.orders.userId, userId));
+    
+    // Deduplicate translations (using default locale logic for simplistic return)
+    const uniquePurchases = purchases.filter((v,i,a) => a.findIndex(t => (t.id === v.id)) === i);
+
+    // 7. Fetch Quiz History
+    const quizAttempts = await db.select({
+      id: schema.quizAttempts.id,
+      score: schema.quizAttempts.score,
+      passed: schema.quizAttempts.passed,
+      attemptedAt: schema.quizAttempts.attemptedAt,
+      quizTitle: schema.quizTranslations.title
+    })
+    .from(schema.quizAttempts)
+    .innerJoin(schema.quizTranslations, eq(schema.quizAttempts.quizId, schema.quizTranslations.quizId))
+    .where(eq(schema.quizAttempts.userId, userId))
+    .orderBy(desc(schema.quizAttempts.attemptedAt))
+    .limit(10);
+    
+    const uniqueQuizAttempts = quizAttempts.filter((v,i,a) => a.findIndex(t => (t.id === v.id)) === i);
+
+    // 8. Compute mock activity feed from existing data
+    const activityFeed = [];
+    if (uniquePurchases.length > 0) {
+      activityFeed.push({ text: `Purchased course: ${uniquePurchases[0].courseTitle}`, date: uniquePurchases[0].createdAt });
+    }
+    if (uniqueQuizAttempts.length > 0) {
+      activityFeed.push({ text: `Completed quiz: ${uniqueQuizAttempts[0].quizTitle} with ${uniqueQuizAttempts[0].score}%`, date: uniqueQuizAttempts[0].attemptedAt });
+    }
+    if (resolvedBadges.length > 0) {
+      activityFeed.push({ text: `Unlocked badge: ${resolvedBadges[0].name}`, date: resolvedBadges[0].unlockedAt });
+    }
+    // Sort activity feed newest first
+    activityFeed.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
     reply.status(200).send({
       id: user.id,
       name: user.name,
@@ -74,6 +118,9 @@ export const getProfileHandler = async (request: FastifyRequest, reply: FastifyR
         lastActiveDate,
       },
       badges: resolvedBadges,
+      purchaseHistory: uniquePurchases,
+      quizHistory: uniqueQuizAttempts,
+      activityFeed: activityFeed
     });
   } catch (error) {
     console.error('❌ Error compiling user stats profile:', error);

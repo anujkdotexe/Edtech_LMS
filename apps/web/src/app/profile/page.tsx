@@ -5,7 +5,8 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { apiFetch } from '../../lib/api';
 import { 
   User, Award, Flame, Sparkles, CheckCircle2, AlertCircle, Save, 
-  Lock, KeyRound, ShieldCheck, Trophy 
+  Lock, KeyRound, ShieldCheck, Trophy, Activity, ShoppingCart, 
+  BrainCircuit, Calendar, FileText
 } from 'lucide-react';
 
 const AVATAR_SEEDS = [
@@ -271,6 +272,33 @@ export default function ProfilePage() {
               ))}
             </div>
           </div>
+
+          {/* Activity Feed */}
+          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-premium space-y-4">
+            <h3 className="font-display font-extrabold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-50 pb-3">
+              <Activity className="w-4.5 h-4.5 text-primary" />
+              Recent Activity Feed
+            </h3>
+            <div className="space-y-3">
+              {(user.activityFeed || []).length > 0 ? (
+                user.activityFeed.map((activity: any, idx: number) => (
+                  <div key={idx} className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-700">{activity.text}</p>
+                      <p className="text-[10px] text-slate-400 font-medium">{new Date(activity.date).toLocaleDateString()} at {new Date(activity.date).toLocaleTimeString()}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center p-4 border border-dashed border-slate-200 rounded-xl">
+                  <p className="text-xs text-slate-400 font-medium">No recent activities found.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Right Column: Update forms */}
@@ -423,6 +451,62 @@ export default function ProfilePage() {
                 </div>
               </div>
             </form>
+          </div>
+
+          {/* Purchase & Quiz History */}
+          <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 shadow-premium space-y-6">
+            <h3 className="font-display font-extrabold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-50 pb-3">
+              <FileText className="w-4.5 h-4.5 text-primary" />
+              Account History
+            </h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Purchases */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShoppingCart className="w-3.5 h-3.5" /> Course Purchases
+                </h4>
+                <div className="space-y-2">
+                  {(user.purchaseHistory || []).length > 0 ? (
+                    user.purchaseHistory.map((purchase: any) => (
+                      <div key={purchase.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                        <p className="text-xs font-bold text-slate-700 truncate">{purchase.courseTitle}</p>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 rounded-sm">${purchase.amount}</span>
+                          <span className="text-[9px] text-slate-400">{new Date(purchase.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[10px] text-slate-400">No purchases found.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Quizzes */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <BrainCircuit className="w-3.5 h-3.5" /> Quiz Attempts
+                </h4>
+                <div className="space-y-2">
+                  {(user.quizHistory || []).length > 0 ? (
+                    user.quizHistory.map((quiz: any) => (
+                      <div key={quiz.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
+                        <div className="truncate pr-2">
+                          <p className="text-xs font-bold text-slate-700 truncate">{quiz.quizTitle}</p>
+                          <span className="text-[9px] text-slate-400">{new Date(quiz.attemptedAt).toLocaleDateString()}</span>
+                        </div>
+                        <span className={`text-[10px] font-bold px-1.5 rounded-sm shrink-0 ${quiz.passed ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                          {quiz.score}%
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[10px] text-slate-400">No quiz attempts yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

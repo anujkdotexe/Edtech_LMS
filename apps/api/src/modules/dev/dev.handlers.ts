@@ -276,3 +276,30 @@ export const adminOverrideHandler = async (request: FastifyRequest, reply: Fasti
   }
 };
 
+// 6. ADVANCED SYSTEM LOGS (Mock DB, Webhook, Storage logs)
+export const getAdvancedLogsHandler = async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const mockLogs = {
+      dbQueries: [
+        { time: new Date(Date.now() - 5000).toISOString(), query: 'SELECT * FROM users WHERE id = $1', duration: '12ms' },
+        { time: new Date(Date.now() - 15000).toISOString(), query: 'INSERT INTO audit_logs (action) VALUES ($1)', duration: '8ms' },
+        { time: new Date(Date.now() - 45000).toISOString(), query: 'SELECT * FROM courses WHERE is_unlocked = true', duration: '35ms' },
+      ],
+      webhooks: [
+        { time: new Date(Date.now() - 120000).toISOString(), event: 'payment.success', payload: '{ orderId: "123" }', status: '200 OK' },
+        { time: new Date(Date.now() - 360000).toISOString(), event: 'payment.failed', payload: '{ orderId: "124", reason: "insufficient_funds" }', status: '200 OK' },
+      ],
+      storage: [
+        { time: new Date(Date.now() - 300000).toISOString(), action: 'FILE_UPLOAD', path: '/uploads/courses/pdf_1.pdf', size: '2.4MB' },
+        { time: new Date(Date.now() - 900000).toISOString(), action: 'FILE_READ', path: '/uploads/courses/pdf_1.pdf', size: '2.4MB' },
+      ]
+    };
+
+    reply.status(200).send(mockLogs);
+  } catch (error) {
+    console.error('❌ Error compiling advanced logs:', error);
+    reply.status(500).send({ error: 'Internal Server Error', message: 'Failed to fetch advanced logs' });
+  }
+};
+
+

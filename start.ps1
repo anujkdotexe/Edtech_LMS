@@ -21,8 +21,8 @@ cd ../..
 Write-Host "✅ Setup complete. Starting servers..." -ForegroundColor Green
 
 # Use Start-Process to run backend and frontend concurrently
-Start-Process -FilePath "pnpm" -ArgumentList "run dev:api" -WindowStyle Normal -NoNewWindow
-Start-Process -FilePath "pnpm" -ArgumentList "run dev:web" -WindowStyle Normal -NoNewWindow
+Start-Process -FilePath "pnpm" -ArgumentList "--filter=@lms/api", "dev" -WindowStyle Normal -NoNewWindow
+Start-Process -FilePath "pnpm" -ArgumentList "--filter=@lms/web", "dev" -WindowStyle Normal -NoNewWindow
 
 Write-Host "🌐 Frontend is running at http://localhost:3000" -ForegroundColor Blue
 Write-Host "🔌 Backend is running at http://localhost:4000" -ForegroundColor Blue

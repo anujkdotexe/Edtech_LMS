@@ -3,9 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { apiFetch } from '../../lib/api';
-import { 
   BookOpen, Plus, Pencil, Trash2, Users, CreditCard, BarChart3, 
-  Sparkles, CheckCircle2, AlertCircle, RefreshCw, Upload, ShieldAlert, Award, ArrowUpRight
+  Sparkles, CheckCircle2, AlertCircle, RefreshCw, Upload, ShieldAlert, Award, ArrowUpRight, Settings
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -403,6 +402,42 @@ export default function AdminDashboardPage() {
               </div>
               <p className="text-3xl font-extrabold text-slate-800">42%</p>
             </div>
+          </div>
+
+          {/* Quick Admin Actions Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Link href="/admin/students" className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl flex items-center justify-between transition group shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold font-display">Student CRM Hub</h4>
+                </div>
+              </div>
+            </Link>
+
+            <Link href="/admin/payments" className="bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-2xl flex items-center justify-between transition group shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold font-display">Payments Ledger</h4>
+                </div>
+              </div>
+            </Link>
+
+            <Link href="/admin/settings" className="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-2xl flex items-center justify-between transition group shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                  <Settings className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold font-display">Global Settings</h4>
+                </div>
+              </div>
+            </Link>
           </div>
 
           {/* Charts & Lists Row */}
