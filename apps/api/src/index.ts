@@ -5,24 +5,32 @@ import fastifyStatic from '@fastify/static';
 import path from 'path';
 import fs from 'fs';
 import { serverEnv } from './config';
-import { signupHandler, loginHandler, refreshHandler, logoutHandler, forgotPasswordHandler, resetPasswordHandler } from './modules/auth/auth.handlers';
+import { signupHandler, loginHandler, refreshHandler, logoutHandler, forgotPasswordHandler, resetPasswordHandler, googleOAuthHandler } from './modules/auth/auth.handlers';
 import { verifyJWT, checkRole } from './modules/auth/auth.middleware';
-import { impersonateHandler, unimpersonateHandler, getAuditLogsHandler, getSystemHealthHandler, adminOverrideHandler, getAdvancedLogsHandler } from './modules/dev/dev.handlers';
+import { impersonateHandler, unimpersonateHandler, getAuditLogsHandler, getSystemHealthHandler, adminOverrideHandler, getAdvancedLogsHandler, getFeatureFlagsHandler, toggleFeatureFlagHandler, getCacheKeysHandler, deleteCacheKeyHandler, getReconciliationReportHandler, getQueueMonitorHandler } from './modules/dev/dev.handlers';
 import { importStudentsHandler } from './modules/admin/admin.handlers';
-import { getStudentsHandler, suspendStudentHandler, resetStudentPasswordHandler } from './modules/admin/students.handlers';
-import { getPaymentsHandler, issueRefundHandler } from './modules/admin/payments.handlers';
-import { getSiteSettingsHandler, updateSiteSettingsHandler } from './modules/admin/settings.handlers';
+import { getStudentsHandler, suspendStudentHandler, resetStudentPasswordHandler, deleteStudentHandler, enrollStudentHandler, exportStudentsHandler, addStudentHandler, bulkEnrollStudentsHandler, revokeCourseAccessHandler, sendMessageToStudentHandler } from './modules/admin/students.handlers';
+import { getPaymentsHandler, issueRefundHandler, exportPaymentsHandler } from './modules/admin/payments.handlers';
+import { getSiteSettingsHandler, updateSiteSettingsHandler, getPublicSettingsHandler } from './modules/admin/settings.handlers';
 import { getCoursesHandler, getCourseByIdHandler, purchaseCourseHandler, createCourseHandler, updateCourseHandler, deleteCourseHandler } from './modules/courses/courses.handlers';
 import { getQuizzesHandler, getQuizQuestionsHandler, submitQuizAnswersHandler } from './modules/quizzes/quizzes.handlers';
-import { createModuleHandler, updateModuleHandler, deleteModuleHandler, createLessonHandler, updateLessonHandler, deleteLessonHandler, uploadLessonFileHandler } from './modules/admin/content.handlers';
+import { createModuleHandler, updateModuleHandler, deleteModuleHandler, createLessonHandler, updateLessonHandler, deleteLessonHandler, uploadLessonFileHandler, reorderLessonsHandler } from './modules/admin/content.handlers';
 import { createQuizHandler, updateQuizHandler, deleteQuizHandler, createQuestionHandler, updateQuestionHandler, deleteQuestionHandler } from './modules/admin/quiz.handlers';
-import { getDashboardAnalyticsHandler } from './modules/admin/analytics.handlers';
+import { getDashboardAnalyticsHandler, getCourseAnalyticsHandler } from './modules/admin/analytics.handlers';
 import { getProfileHandler, updateProfileHandler } from './modules/profile/profile.handlers';
 import { getLeaderboardHandler } from './modules/leaderboard/leaderboard.handlers';
 import fastifyMultipart from '@fastify/multipart';
+import swagger from '@fastify/swagger';
+import swaggerUI from '@fastify/swagger-ui';
+import * as schemas from './schemas';
 
 const server = fastify({
   logger: true,
+  ajv: {
+    customOptions: {
+      strict: false,
+    }
+  }
 });
 
 // Ensure upload directory exists for local PDF syllabus courseware storage
@@ -50,194 +58,388 @@ server.register(fastifyStatic, {
   prefix: '/public/uploads/',
 });
 
-// Root / Health check
-server.get('/health', async () => {
-  return { status: 'healthy', timestamp: new Date().toISOString() };
+// 1.5 Register Swagger API Documentation
+server.register(swagger, {
+  swagger: {
+    info: {
+      title: 'Antigravity LMS API',
+      description: 'API documentation for the gamified language learning system.',
+      version: '1.0.0',
+    },
+    host: `localhost:${serverEnv.PORT}`,
+    schemes: ['http'],
+    consumes: ['application/json'],
+    produces: ['application/json'],
+    securityDefinitions: {
+      cookieAuth: {
+        type: 'apiKey',
+        name: 'token',
+        in: 'cookie'
+      }
+    }
+  },
 });
 
-// 2. Authentication Router
-server.post('/api/auth/signup', signupHandler);
-server.post('/api/auth/login', loginHandler);
-server.post('/api/auth/refresh', refreshHandler);
-server.post('/api/auth/logout', logoutHandler);
-server.post('/api/auth/forgot-password', forgotPasswordHandler);
-server.post('/api/auth/reset-password', resetPasswordHandler);
+// Register routes inside a plugin scope to allow @fastify/swagger's onRoute hook to capture them during Fastify's boot cycle.
+server.register(async (api) => {
+  // Root / Health check
+  api.get('/health', {
+    schema: schemas.healthSchema,
+    handler: async () => {
+      return { status: 'healthy', timestamp: new Date().toISOString() };
+    }
+  });
 
-// 3. Syllabus & Course Catalog Router
-server.get('/api/courses', getCoursesHandler);
-server.post('/api/courses', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: createCourseHandler,
-});
-server.get('/api/courses/:id', getCourseByIdHandler);
-server.put('/api/courses/:id', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: updateCourseHandler,
-});
-server.delete('/api/courses/:id', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: deleteCourseHandler,
-});
-server.post('/api/courses/:id/purchase', {
-  preHandler: [verifyJWT],
-  handler: purchaseCourseHandler,
+  // Public settings & rotating daily tips
+  api.get('/api/public/settings', {
+    schema: schemas.publicSettingsSchema,
+    handler: getPublicSettingsHandler
+  });
+
+  // 2. Authentication Router
+  api.post('/api/auth/signup', { schema: schemas.signupSchema, handler: signupHandler });
+  api.post('/api/auth/google', { schema: schemas.googleOAuthSchema, handler: googleOAuthHandler });
+  api.post('/api/auth/login', { schema: schemas.loginSchema, handler: loginHandler });
+  api.post('/api/auth/refresh', { schema: schemas.refreshSchema, handler: refreshHandler });
+  api.post('/api/auth/logout', { schema: schemas.logoutSchema, handler: logoutHandler });
+  api.post('/api/auth/forgot-password', { schema: schemas.forgotPasswordSchema, handler: forgotPasswordHandler });
+  api.post('/api/auth/reset-password', { schema: schemas.resetPasswordSchema, handler: resetPasswordHandler });
+
+  // 3. Syllabus & Course Catalog Router
+  api.get('/api/courses', { schema: schemas.coursesSchema, handler: getCoursesHandler });
+  api.post('/api/courses', {
+    schema: schemas.createCourseSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: createCourseHandler,
+  });
+  api.get('/api/courses/:id', { schema: schemas.courseByIdSchema, handler: getCourseByIdHandler });
+  api.put('/api/courses/:id', {
+    schema: schemas.updateCourseSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: updateCourseHandler,
+  });
+  api.delete('/api/courses/:id', {
+    schema: schemas.deleteCourseSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: deleteCourseHandler,
+  });
+  api.post('/api/courses/:id/purchase', {
+    schema: schemas.purchaseCourseSchema,
+    preHandler: [verifyJWT],
+    handler: purchaseCourseHandler,
+  });
+
+  // 4. Interactive Gamified MCQ Quiz Router
+  api.get('/api/quizzes', { schema: schemas.quizzesSchema, handler: getQuizzesHandler });
+  api.get('/api/quizzes/:id', {
+    schema: schemas.quizByIdSchema,
+    preHandler: [verifyJWT],
+    handler: getQuizQuestionsHandler,
+  });
+  api.post('/api/quizzes/:id/submit', {
+    schema: schemas.submitQuizSchema,
+    preHandler: [verifyJWT],
+    handler: submitQuizAnswersHandler,
+  });
+
+  // 5. User Profile Stats Grid Router
+  api.get('/api/profile', {
+    schema: schemas.profileSchema,
+    preHandler: [verifyJWT],
+    handler: getProfileHandler,
+  });
+  api.put('/api/profile', {
+    schema: schemas.updateProfileSchema,
+    preHandler: [verifyJWT],
+    handler: updateProfileHandler,
+  });
+
+  // 6. Weekly Leaderboard Router
+  api.get('/api/leaderboard', { schema: schemas.leaderboardSchema, handler: getLeaderboardHandler });
+
+  // 7. Developer Control & Monitoring Router (Protected)
+  api.post('/api/dev/impersonate', {
+    schema: schemas.devImpersonateSchema,
+    preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
+    handler: impersonateHandler,
+  });
+  api.post('/api/dev/unimpersonate', {
+    schema: schemas.devUnimpersonateSchema,
+    preHandler: [verifyJWT],
+    handler: unimpersonateHandler,
+  });
+  api.get('/api/dev/monitoring/logs', {
+    schema: schemas.devLogsSchema,
+    preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
+    handler: getAuditLogsHandler,
+  });
+  api.get('/api/dev/monitoring/health', {
+    schema: schemas.devHealthSchema,
+    preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
+    handler: getSystemHealthHandler,
+  });
+  api.post('/api/dev/monitoring/override', {
+    schema: schemas.devOverrideSchema,
+    preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
+    handler: adminOverrideHandler,
+  });
+  api.get('/api/dev/monitoring/advanced-logs', {
+    schema: schemas.devAdvancedLogsSchema,
+    preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
+    handler: getAdvancedLogsHandler,
+  });
+
+  // 8. Onboarding CRM Admin Router (Protected)
+  api.post('/api/admin/students/import', {
+    schema: schemas.adminImportStudentsSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: importStudentsHandler,
+  });
+  api.get('/api/admin/students', {
+    schema: schemas.adminGetStudentsSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: getStudentsHandler,
+  });
+  api.post('/api/admin/students/:id/suspend', {
+    schema: schemas.adminSuspendStudentSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: suspendStudentHandler,
+  });
+  api.post('/api/admin/students/:id/reset-password', {
+    schema: schemas.adminResetStudentPasswordSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: resetStudentPasswordHandler,
+  });
+  api.delete('/api/admin/students/:id', {
+    schema: schemas.adminDeleteStudentSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: deleteStudentHandler,
+  });
+  api.post('/api/admin/students/:id/enroll', {
+    schema: schemas.adminEnrollStudentSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: enrollStudentHandler,
+  });
+  api.get('/api/admin/students/export', {
+    schema: schemas.adminExportStudentsSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: exportStudentsHandler,
+  });
+  api.post('/api/admin/students', {
+    schema: schemas.adminAddStudentSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: addStudentHandler,
+  });
+  api.post('/api/admin/students/bulk-enroll', {
+    schema: schemas.adminBulkEnrollStudentsSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: bulkEnrollStudentsHandler,
+  });
+  api.post('/api/admin/students/revoke', {
+    schema: schemas.adminRevokeCourseAccessSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: revokeCourseAccessHandler,
+  });
+  api.post('/api/admin/students/message', {
+    schema: schemas.adminSendMessageSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: sendMessageToStudentHandler,
+  });
+
+  // 8.5 Admin Payments Router (Protected)
+  api.get('/api/admin/payments', {
+    schema: schemas.adminGetPaymentsSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: getPaymentsHandler,
+  });
+  api.post('/api/admin/payments/:id/refund', {
+    schema: schemas.adminRefundPaymentSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: issueRefundHandler,
+  });
+  api.get('/api/admin/payments/export', {
+    schema: schemas.adminExportPaymentsSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: exportPaymentsHandler,
+  });
+
+  // 8.6 Admin Site Settings Router (Protected)
+  api.get('/api/admin/settings', {
+    schema: schemas.adminGetSettingsSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: getSiteSettingsHandler,
+  });
+  api.put('/api/admin/settings', {
+    schema: schemas.adminUpdateSettingsSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: updateSiteSettingsHandler,
+  });
+
+  // 9. Admin Content Management Router (Protected)
+  api.post('/api/admin/courses/:id/modules', {
+    schema: schemas.adminCreateModuleSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: createModuleHandler,
+  });
+  api.put('/api/admin/modules/:id', {
+    schema: schemas.adminUpdateModuleSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: updateModuleHandler,
+  });
+  api.delete('/api/admin/modules/:id', {
+    schema: schemas.adminDeleteModuleSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: deleteModuleHandler,
+  });
+  api.post('/api/admin/modules/:moduleId/lessons', {
+    schema: schemas.adminCreateLessonSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: createLessonHandler,
+  });
+  api.put('/api/admin/lessons/:id', {
+    schema: schemas.adminUpdateLessonSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: updateLessonHandler,
+  });
+  api.delete('/api/admin/lessons/:id', {
+    schema: schemas.adminDeleteLessonSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: deleteLessonHandler,
+  });
+  api.put('/api/admin/lessons/:id/upload', {
+    schema: schemas.adminUploadLessonFileSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: uploadLessonFileHandler,
+  });
+
+  // 10. Admin Quiz Management Router (Protected)
+  api.post('/api/admin/quizzes', {
+    schema: schemas.adminCreateQuizSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: createQuizHandler,
+  });
+  api.put('/api/admin/quizzes/:id', {
+    schema: schemas.adminUpdateQuizSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: updateQuizHandler,
+  });
+  api.delete('/api/admin/quizzes/:id', {
+    schema: schemas.adminDeleteQuizSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: deleteQuizHandler,
+  });
+  api.post('/api/admin/quizzes/:id/questions', {
+    schema: schemas.adminCreateQuestionSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: createQuestionHandler,
+  });
+  api.put('/api/admin/questions/:questionId', {
+    schema: schemas.adminUpdateQuestionSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: updateQuestionHandler,
+  });
+  api.delete('/api/admin/questions/:questionId', {
+    schema: schemas.adminDeleteQuestionSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: deleteQuestionHandler,
+  });
+
+  // 11. Admin Analytics Router (Protected)
+  api.get('/api/admin/analytics/dashboard', {
+    schema: schemas.adminGetAnalyticsSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: getDashboardAnalyticsHandler,
+  });
+  api.get('/api/admin/analytics/courses/:courseId', {
+    schema: schemas.getCourseAnalyticsSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: getCourseAnalyticsHandler,
+  });
+
+  // 12. Admin Content Reorder Router (Protected)
+  api.put('/api/admin/modules/:moduleId/reorder-lessons', {
+    schema: schemas.reorderLessonsSchema,
+    preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
+    handler: reorderLessonsHandler,
+  });
+
+  // 13. Developer Feature Flags Router (Protected)
+  api.get('/api/dev/feature-flags', {
+    schema: schemas.getFeatureFlagsSchema,
+    preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
+    handler: getFeatureFlagsHandler,
+  });
+  api.post('/api/dev/feature-flags/toggle', {
+    schema: schemas.toggleFeatureFlagSchema,
+    preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
+    handler: toggleFeatureFlagHandler,
+  });
+
+  // 14. Developer Cache Inspector Router (Protected)
+  api.get('/api/dev/cache', {
+    schema: schemas.getCacheKeysSchema,
+    preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
+    handler: getCacheKeysHandler,
+  });
+  api.delete('/api/dev/cache/:key', {
+    schema: schemas.deleteCacheKeySchema,
+    preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
+    handler: deleteCacheKeyHandler,
+  });
+
+  // 15. Developer Payment Reconciliation Router (Protected)
+  api.get('/api/dev/reconciliation', {
+    schema: schemas.getReconciliationSchema,
+    preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
+    handler: getReconciliationReportHandler,
+  });
+
+  // 16. Developer Queue Monitor Router (Protected)
+  api.get('/api/dev/queue', {
+    schema: schemas.getQueueMonitorSchema,
+    preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
+    handler: getQueueMonitorHandler,
+  });
 });
 
-// 4. Interactive Gamified MCQ Quiz Router
-server.get('/api/quizzes', getQuizzesHandler);
-server.get('/api/quizzes/:id', {
-  preHandler: [verifyJWT],
-  handler: getQuizQuestionsHandler,
-});
-server.post('/api/quizzes/:id/submit', {
-  preHandler: [verifyJWT],
-  handler: submitQuizAnswersHandler,
+server.register(swaggerUI, {
+  routePrefix: '/docs/swagger',
+  uiConfig: {
+    docExpansion: 'list',
+    deepLinking: false,
+  },
 });
 
-// 5. User Profile Stats Grid Router
-server.get('/api/profile', {
-  preHandler: [verifyJWT],
-  handler: getProfileHandler,
-});
-server.put('/api/profile', {
-  preHandler: [verifyJWT],
-  handler: updateProfileHandler,
-});
-
-// 6. Weekly Leaderboard Router
-server.get('/api/leaderboard', getLeaderboardHandler);
-
-// 7. Developer Control & Monitoring Router (Protected)
-server.post('/api/dev/impersonate', {
-  preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
-  handler: impersonateHandler,
-});
-server.post('/api/dev/unimpersonate', {
-  preHandler: [verifyJWT],
-  handler: unimpersonateHandler,
-});
-server.get('/api/dev/monitoring/logs', {
-  preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
-  handler: getAuditLogsHandler,
-});
-server.get('/api/dev/monitoring/health', {
-  preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
-  handler: getSystemHealthHandler,
-});
-server.post('/api/dev/monitoring/override', {
-  preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
-  handler: adminOverrideHandler,
-});
-server.get('/api/dev/monitoring/advanced-logs', {
-  preHandler: [verifyJWT, checkRole(['DEVELOPER'])],
-  handler: getAdvancedLogsHandler,
+server.get('/docs', async (request, reply) => {
+  let htmlPath = path.join(__dirname, 'templates', 'docs.html');
+  if (!fs.existsSync(htmlPath)) {
+    htmlPath = path.join(__dirname, '..', 'src', 'templates', 'docs.html');
+  }
+  const htmlContent = fs.readFileSync(htmlPath, 'utf8');
+  reply.type('text/html').send(htmlContent);
 });
 
-// 8. Onboarding CRM Admin Router (Protected)
-server.post('/api/admin/students/import', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: importStudentsHandler,
-});
-server.get('/api/admin/students', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: getStudentsHandler,
-});
-server.post('/api/admin/students/:id/suspend', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: suspendStudentHandler,
-});
-server.post('/api/admin/students/:id/reset-password', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: resetStudentPasswordHandler,
+server.get('/docs/', async (request, reply) => {
+  let htmlPath = path.join(__dirname, 'templates', 'docs.html');
+  if (!fs.existsSync(htmlPath)) {
+    htmlPath = path.join(__dirname, '..', 'src', 'templates', 'docs.html');
+  }
+  const htmlContent = fs.readFileSync(htmlPath, 'utf8');
+  reply.type('text/html').send(htmlContent);
 });
 
-// 8.5 Admin Payments Router (Protected)
-server.get('/api/admin/payments', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: getPaymentsHandler,
-});
-server.post('/api/admin/payments/:id/refund', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: issueRefundHandler,
-});
-
-// 8.6 Admin Site Settings Router (Protected)
-server.get('/api/admin/settings', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: getSiteSettingsHandler,
-});
-server.put('/api/admin/settings', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: updateSiteSettingsHandler,
-});
-
-// 9. Admin Content Management Router (Protected)
-server.post('/api/admin/courses/:id/modules', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: createModuleHandler,
-});
-server.put('/api/admin/modules/:id', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: updateModuleHandler,
-});
-server.delete('/api/admin/modules/:id', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: deleteModuleHandler,
-});
-server.post('/api/admin/modules/:moduleId/lessons', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: createLessonHandler,
-});
-server.put('/api/admin/lessons/:id', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: updateLessonHandler,
-});
-server.delete('/api/admin/lessons/:id', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: deleteLessonHandler,
-});
-server.put('/api/admin/lessons/:id/upload', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: uploadLessonFileHandler,
-});
-
-// 10. Admin Quiz Management Router (Protected)
-server.post('/api/admin/quizzes', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: createQuizHandler,
-});
-server.put('/api/admin/quizzes/:id', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: updateQuizHandler,
-});
-server.delete('/api/admin/quizzes/:id', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: deleteQuizHandler,
-});
-server.post('/api/admin/quizzes/:id/questions', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: createQuestionHandler,
-});
-server.put('/api/admin/questions/:questionId', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: updateQuestionHandler,
-});
-server.delete('/api/admin/questions/:questionId', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: deleteQuestionHandler,
-});
-
-// 11. Admin Analytics Router (Protected)
-server.get('/api/admin/analytics/dashboard', {
-  preHandler: [verifyJWT, checkRole(['ADMIN', 'DEVELOPER'])],
-  handler: getDashboardAnalyticsHandler,
+server.get('/test-swagger', async () => {
+  return {
+    routes: server.printRoutes(),
+    swagger: server.swagger()
+  };
 });
 
 // Start Server
 const start = async () => {
   try {
     await server.listen({ port: serverEnv.PORT, host: '0.0.0.0' });
-    console.log(`🚀 Standalone Fastify backend running on http://localhost:${serverEnv.PORT}`);
+    console.log(`[OK] Standalone Fastify backend running on http://localhost:${serverEnv.PORT}`);
   } catch (err) {
     server.log.error(err);
     process.exit(1);

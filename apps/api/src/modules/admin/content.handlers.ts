@@ -151,6 +151,35 @@ export const deleteLessonHandler = async (request: FastifyRequest, reply: Fastif
   }
 };
 
+// --- REORDER LESSONS HANDLER ---
+
+export const reorderLessonsHandler = async (request: FastifyRequest, reply: FastifyReply) => {
+  const { moduleId } = request.params as { moduleId: string };
+  const { orderedLessonIds } = request.body as { orderedLessonIds: string[] };
+
+  try {
+    const moduleCheck = await db.select().from(schema.modules).where(eq(schema.modules.id, moduleId)).limit(1);
+    if (moduleCheck.length === 0) {
+      return reply.status(404).send({ error: 'Not Found', message: 'Module not found' });
+    }
+
+    // Update each lesson's orderIndex in a transaction
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < orderedLessonIds.length; i++) {
+        await tx
+          .update(schema.lessons)
+          .set({ orderIndex: i })
+          .where(eq(schema.lessons.id, orderedLessonIds[i]));
+      }
+    });
+
+    reply.status(200).send({ success: true, message: `Reordered ${orderedLessonIds.length} lessons successfully` });
+  } catch (err) {
+    request.log.error(err);
+    reply.status(500).send({ error: 'Internal Server Error' });
+  }
+};
+
 // --- FILE UPLOAD HANDLER ---
 
 export const uploadLessonFileHandler = async (request: FastifyRequest, reply: FastifyReply) => {

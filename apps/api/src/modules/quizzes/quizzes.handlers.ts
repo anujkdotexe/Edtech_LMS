@@ -8,6 +8,10 @@ const BADGE_REGISTRY = [
   { id: 'scholar_1', name: 'First Steps Scholar', description: 'Passed your first language quiz!' },
   { id: 'streak_3', name: 'Dedicated Learner', description: 'Maintained a 3-day learning streak!' },
   { id: 'level_5', name: 'Fluent Speaker', description: 'Reached Level 5!' },
+  { id: 'perfect_100', name: 'Perfect Score Master', description: 'Scored a flawless 100% on a quiz!' },
+  { id: 'streak_7', name: 'Unstoppable Habit', description: 'Achieved an amazing 7-day learning streak!' },
+  { id: 'level_10', name: 'Grandmaster Linguist', description: 'Reached Level 10 of language mastery!' },
+  { id: 'scholar_5', name: 'Academic Elite', description: 'Successfully passed 5 or more distinct quizzes!' },
 ];
 
 // 1. GET ALL QUIZZES (multilingual metadata catalog)
@@ -36,7 +40,7 @@ export const getQuizzesHandler = async (request: FastifyRequest, reply: FastifyR
 
     reply.status(200).send(resolvedQuizzes);
   } catch (error) {
-    console.error('❌ Error fetching quizzes:', error);
+    console.error('[ERROR] Error fetching quizzes:', error);
     reply.status(500).send({ error: 'Internal Server Error', message: 'Could not fetch quizzes' });
   }
 };
@@ -249,6 +253,22 @@ export const submitQuizAnswersHandler = async (request: FastifyRequest, reply: F
       // E. Unlocking Badge Sweep Sweeper
       const alreadyEarnedIds = userBadgesList.map((b) => b.badgeId);
 
+      const passedAttempts = await tx
+        .select()
+        .from(schema.quizAttempts)
+        .where(
+          and(
+            eq(schema.quizAttempts.userId, userId),
+            eq(schema.quizAttempts.passed, true)
+          )
+        );
+
+      const uniqueQuizIdsPassed = new Set(passedAttempts.map((a) => a.quizId));
+      if (passed) {
+        uniqueQuizIdsPassed.add(id);
+      }
+      const passedCount = uniqueQuizIdsPassed.size;
+
       for (const badge of BADGE_REGISTRY) {
         if (alreadyEarnedIds.includes(badge.id)) continue;
 
@@ -262,6 +282,18 @@ export const submitQuizAnswersHandler = async (request: FastifyRequest, reply: F
           shouldUnlock = true;
         } else if (badge.id === 'level_5' && newLevel >= 5) {
           // Reached level 5
+          shouldUnlock = true;
+        } else if (badge.id === 'perfect_100' && score === 100 && passed) {
+          // Perfect score on a passed quiz
+          shouldUnlock = true;
+        } else if (badge.id === 'streak_7' && currentStreak >= 7) {
+          // Streak >= 7 days
+          shouldUnlock = true;
+        } else if (badge.id === 'level_10' && newLevel >= 10) {
+          // Reached level 10
+          shouldUnlock = true;
+        } else if (badge.id === 'scholar_5' && passedCount >= 5) {
+          // Passed >= 5 unique quizzes
           shouldUnlock = true;
         }
 
@@ -298,7 +330,7 @@ export const submitQuizAnswersHandler = async (request: FastifyRequest, reply: F
       badgesUnlocked: unlockedBadgesThisAttempt,
     });
   } catch (error) {
-    console.error('❌ Error processing quiz submission:', error);
+    console.error('[ERROR] Error processing quiz submission:', error);
     reply.status(500).send({ error: 'Internal Server Error', message: 'Quiz submission failed' });
   }
 };

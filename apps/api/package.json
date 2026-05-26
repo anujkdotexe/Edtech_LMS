@@ -16,6 +16,8 @@
     "@fastify/cors": "^9.0.1",
     "@fastify/multipart": "^8.3.1",
     "@fastify/static": "^7.0.0",
+    "@fastify/swagger": "8.14.0",
+    "@fastify/swagger-ui": "3.0.0",
     "@lms/api-contracts": "workspace:*",
     "@lms/types": "workspace:*",
     "@lms/utils": "workspace:*",
@@ -31,6 +33,7 @@
   },
   "devDependencies": {
     "@lms/eslint-config": "workspace:*",
+    "@lms/tsconfig": "workspace:*",
     "@types/bcrypt": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.11.20",

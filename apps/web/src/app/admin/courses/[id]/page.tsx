@@ -6,7 +6,7 @@ import { useAuthStore } from '../../../../store/useAuthStore';
 import { apiFetch } from '../../../../lib/api';
 import Link from 'next/link';
 import { 
-  ArrowLeft, Plus, Pencil, Trash2, GripVertical, FileText, Upload, Save, X 
+  ArrowLeft, Plus, Pencil, Trash2, GripVertical, FileText, Upload, Save, X, Eye, EyeOff 
 } from 'lucide-react';
 
 interface Lesson {
@@ -32,6 +32,7 @@ interface CourseDetails {
   price: number;
   isPremium: boolean;
   isUnlocked: boolean;
+  isPublished: boolean;
   modules: Module[];
 }
 
@@ -65,6 +66,19 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
       setErrorMsg(err.message || 'Failed to load course details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTogglePublish = async () => {
+    if (!course) return;
+    try {
+      await apiFetch(`/api/courses/${params.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ isPublished: !course.isPublished }),
+      });
+      loadCourse();
+    } catch (err: any) {
+      alert(err.message || 'Could not update publication state');
     }
   };
 
@@ -177,16 +191,45 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
             <ArrowLeft className="w-5 h-5 text-slate-500" />
           </Link>
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">{course.title}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">{course.title}</h1>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
+                course.isPublished 
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+              }`}>
+                {course.isPublished ? 'Live' : 'Draft'}
+              </span>
+            </div>
             <p className="text-sm text-slate-500">Course Content Management</p>
           </div>
         </div>
-        <button 
-          onClick={() => setModuleModal({ isOpen: true, mode: 'CREATE', id: null, title: '' })}
-          className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-xl text-sm font-bold shadow transition active:scale-95 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" /> Add Module
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleTogglePublish}
+            className={`px-4 py-2 rounded-xl text-sm font-bold shadow transition active:scale-95 flex items-center gap-2 border ${
+              course.isPublished
+                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
+            }`}
+          >
+            {course.isPublished ? (
+              <>
+                <EyeOff className="w-4 h-4 text-emerald-600" /> Make Draft
+              </>
+            ) : (
+              <>
+                <Eye className="w-4 h-4" /> Go Live
+              </>
+            )}
+          </button>
+          <button 
+            onClick={() => setModuleModal({ isOpen: true, mode: 'CREATE', id: null, title: '' })}
+            className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-xl text-sm font-bold shadow transition active:scale-95 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Add Module
+          </button>
+        </div>
       </div>
 
       {/* Modules List */}

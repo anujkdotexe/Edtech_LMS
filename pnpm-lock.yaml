@@ -26,6 +26,12 @@ importers:
       '@fastify/static':
         specifier: ^7.0.0
         version: 7.0.4
+      '@fastify/swagger':
+        specifier: 8.14.0
+        version: 8.14.0
+      '@fastify/swagger-ui':
+        specifier: 3.0.0
+        version: 3.0.0
       '@lms/api-contracts':
         specifier: workspace:*
         version: link:../../packages/api-contracts
@@ -66,6 +72,9 @@ importers:
       '@lms/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
+      '@lms/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
       '@types/bcrypt':
         specifier: ^5.0.2
         version: 5.0.2
@@ -141,7 +150,7 @@ importers:
         version: 8.5.15
       tailwindcss:
         specifier: ^3.4.1
-        version: 3.4.19(tsx@4.22.3)
+        version: 3.4.19(tsx@4.22.3)(yaml@2.9.0)
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
@@ -702,6 +711,12 @@ packages:
 
   '@fastify/static@7.0.4':
     resolution: {integrity: sha512-p2uKtaf8BMOZWLs6wu+Ihg7bWNBdjNgCwDza4MJtTqg+5ovKmcbgbR9Xs5/smZ1YISfzKOCNYmZV8LaCj+eJ1Q==}
+
+  '@fastify/swagger-ui@3.0.0':
+    resolution: {integrity: sha512-8P5OwHVv6QR4XSE6cW4fsENeMbW4yWWWj6Dz/5tvQN2pwNyTiSWxYpsY3+VP+uiZucNaDrAE2xm11rqytqAocA==}
+
+  '@fastify/swagger@8.14.0':
+    resolution: {integrity: sha512-sGiznEb3rl6pKGGUZ+JmfI7ct5cwbTQGo+IjewaTvtzfrshnryu4dZwEsjw0YHABpBA+kCz3kpRaHB7qpa67jg==}
 
   '@formatjs/ecma402-abstract@2.3.6':
     resolution: {integrity: sha512-HJnTFeRM2kVFVr5gr5kH1XP6K0JcJtE7Lzvtr3FS/so5f1kpsqqqxy5JF+FRaO6H2qmcMfAUIox7AJteieRtVw==}
@@ -1537,6 +1552,10 @@ packages:
   json-schema-ref-resolver@1.0.1:
     resolution: {integrity: sha512-EJAj1pgHc1hxF6vo2Z3s69fMjO1INq6eGHXZ8Z6wCQeldCuwxGK9Sxf4/cScGn3FZubCVUehfWtcDM/PLteCQw==}
 
+  json-schema-resolver@2.0.0:
+    resolution: {integrity: sha512-pJ4XLQP4Q9HTxl6RVDLJ8Cyh1uitSs0CzDBAz1uoJ4sRD/Bk7cFSXL1FUXDW3zJ7YnfliJx6eu8Jn283bpZ4Yg==}
+    engines: {node: '>=10'}
+
   json-schema-traverse@0.4.1:
     resolution: {integrity: sha512-xbbCH5dCYU5T8LcEhhuh7HJ88HXuW3qsI3Y0zOZFKfZEHcpWiHU/Jxzk629Brsab/mMiHQti9wMP+845RPe3Vg==}
 
@@ -1754,6 +1773,9 @@ packages:
 
   once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
+
+  openapi-types@12.1.3:
+    resolution: {integrity: sha512-N4YtSYJqghVu4iek2ZUvcN/0aqH1kRDuNqzcycDxhOUpg7GdvLa2F3DgS6yBNhInhv2r/6I0Flkn7CqL8+nIcw==}
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -2266,6 +2288,11 @@ packages:
   yallist@4.0.0:
     resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
 
+  yaml@2.9.0:
+    resolution: {integrity: sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+
   yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
@@ -2608,6 +2635,24 @@ snapshots:
       fastify-plugin: 4.5.1
       fastq: 1.20.1
       glob: 10.5.0
+
+  '@fastify/swagger-ui@3.0.0':
+    dependencies:
+      '@fastify/static': 7.0.4
+      fastify-plugin: 4.5.1
+      openapi-types: 12.1.3
+      rfdc: 1.4.1
+      yaml: 2.9.0
+
+  '@fastify/swagger@8.14.0':
+    dependencies:
+      fastify-plugin: 4.5.1
+      json-schema-resolver: 2.0.0
+      openapi-types: 12.1.3
+      rfdc: 1.4.1
+      yaml: 2.9.0
+    transitivePeerDependencies:
+      - supports-color
 
   '@formatjs/ecma402-abstract@2.3.6':
     dependencies:
@@ -3430,6 +3475,14 @@ snapshots:
     dependencies:
       fast-deep-equal: 3.1.3
 
+  json-schema-resolver@2.0.0:
+    dependencies:
+      debug: 4.4.3
+      rfdc: 1.4.1
+      uri-js: 4.4.1
+    transitivePeerDependencies:
+      - supports-color
+
   json-schema-traverse@0.4.1: {}
 
   json-schema-traverse@1.0.0: {}
@@ -3635,6 +3688,8 @@ snapshots:
     dependencies:
       wrappy: 1.0.2
 
+  openapi-types@12.1.3: {}
+
   optionator@0.9.4:
     dependencies:
       deep-is: 0.1.4
@@ -3748,13 +3803,14 @@ snapshots:
       camelcase-css: 2.0.1
       postcss: 8.5.15
 
-  postcss-load-config@6.0.1(jiti@1.21.7)(postcss@8.5.15)(tsx@4.22.3):
+  postcss-load-config@6.0.1(jiti@1.21.7)(postcss@8.5.15)(tsx@4.22.3)(yaml@2.9.0):
     dependencies:
       lilconfig: 3.1.3
     optionalDependencies:
       jiti: 1.21.7
       postcss: 8.5.15
       tsx: 4.22.3
+      yaml: 2.9.0
 
   postcss-nested@6.2.0(postcss@8.5.15):
     dependencies:
@@ -3964,7 +4020,7 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  tailwindcss@3.4.19(tsx@4.22.3):
+  tailwindcss@3.4.19(tsx@4.22.3)(yaml@2.9.0):
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
@@ -3983,7 +4039,7 @@ snapshots:
       postcss: 8.5.15
       postcss-import: 15.1.0(postcss@8.5.15)
       postcss-js: 4.1.0(postcss@8.5.15)
-      postcss-load-config: 6.0.1(jiti@1.21.7)(postcss@8.5.15)(tsx@4.22.3)
+      postcss-load-config: 6.0.1(jiti@1.21.7)(postcss@8.5.15)(tsx@4.22.3)(yaml@2.9.0)
       postcss-nested: 6.2.0(postcss@8.5.15)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.12
@@ -4106,6 +4162,8 @@ snapshots:
   xtend@4.0.2: {}
 
   yallist@4.0.0: {}
+
+  yaml@2.9.0: {}
 
   yocto-queue@0.1.0: {}
 

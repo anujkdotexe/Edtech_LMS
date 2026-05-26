@@ -17,7 +17,7 @@ import {
 // --- ENUMS DEFINITIONS ---
 export const userRoleEnum = pgEnum('user_role', ['STUDENT', 'ADMIN', 'DEVELOPER']);
 export const cefrLevelEnum = pgEnum('cefr_level', ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
-export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'SUCCESS', 'FAILED']);
+export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'SUCCESS', 'FAILED', 'REFUNDED']);
 export const difficultyLevelEnum = pgEnum('difficulty_level', ['EASY', 'MEDIUM', 'HARD']);
 
 // --- TABLES DEFINITIONS ---
@@ -31,6 +31,7 @@ export const users = pgTable('users', {
   role: userRoleEnum('role').default('STUDENT').notNull(),
   avatarUrl: varchar('avatar_url', { length: 255 }),
   forcePasswordReset: boolean('force_password_reset').default(false).notNull(),
+  isSuspended: boolean('is_suspended').default(false).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => {
@@ -214,4 +215,11 @@ export const auditLogs = pgTable('audit_logs', {
   details: text('details'),
   ipAddress: varchar('ip_address', { length: 45 }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+// 17. site_config
+export const siteConfig = pgTable('site_config', {
+  key: varchar('key', { length: 100 }).primaryKey().notNull(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

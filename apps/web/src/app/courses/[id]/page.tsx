@@ -7,7 +7,7 @@ import { apiFetch } from '../../../lib/api';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { 
   ChevronLeft, Lock, Unlock, FileText, Play, CheckCircle2, 
-  HelpCircle, Eye, AlertCircle, ShoppingCart, Pencil, Volume2 
+  HelpCircle, Eye, AlertCircle, ShoppingCart
 } from 'lucide-react';
 
 interface Lesson {
@@ -288,76 +288,72 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
                 </p>
               </div>
 
-              {/* PDF Viewer Body */}
-              <div className="flex-1 my-6 flex flex-col items-center justify-center">
-                {activeLesson.filePath ? (
-                  // Custom Interactive PDF Viewer Mock Grid Container
-                  <div className="w-full bg-slate-50 border border-slate-200/80 rounded-xl p-6 relative min-h-[300px] flex flex-col justify-between shadow-inset overflow-hidden">
-                    
-                    {/* Simulated Document details */}
-                    <div className="absolute top-0 right-0 p-2 bg-slate-200/60 text-[9px] text-slate-500 font-bold uppercase tracking-wider rounded-bl border-l border-b border-slate-300/40">
-                      Local PDF Sandbox
-                    </div>
+              {/* Lesson Content Viewer */}
+              <div className="flex-1 my-6 flex flex-col">
+                {activeLesson.filePath ? (() => {
+                  const fp = activeLesson.filePath.toLowerCase();
+                  const isVideo = fp.endsWith('.mp4') || fp.endsWith('.webm') || fp.endsWith('.ogg');
+                  const isPdf = fp.endsWith('.pdf');
+                  // Normalise path: strip leading slash for public serving
+                  const publicUrl = activeLesson.filePath.startsWith('/') 
+                    ? activeLesson.filePath 
+                    : `/${activeLesson.filePath}`;
 
-                    <div className="space-y-4">
-                      {/* Document Meta */}
-                      <div className="space-y-1">
-                        <span className="text-[9px] text-slate-400 font-bold uppercase">Source Path</span>
-                        <code className="text-[10px] bg-slate-200/50 px-2 py-1 rounded text-slate-600 font-mono block truncate">
-                          {activeLesson.filePath}
-                        </code>
-                      </div>
-
-                      {/* Dynamic content mockup based on file name */}
-                      <div className="bg-white border border-slate-100 rounded-lg p-5 shadow-sm space-y-3">
-                        <h4 className="font-bold text-slate-700 text-xs tracking-wider uppercase border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                          Curriculum Reference Content
-                        </h4>
-                        
-                        <p className="text-xs text-slate-500 leading-relaxed">
-                          This is a local sandbox view of the language module syllabus guide. It provides targeted grammar insights, verb conjugations, and audio transcript overlays mapped dynamically using our local filesystem directories.
-                        </p>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-[11px] font-medium text-slate-600">
-                          <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-1.5">
-                            <Pencil className="w-3.5 h-3.5 text-primary shrink-0" />
-                            <span><strong>Conjugation Notes:</strong> Verbes du premier groupe</span>
-                          </div>
-                          <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-1.5">
-                            <Volume2 className="w-4 h-4 text-primary shrink-0" />
-                            <span><strong>Accent Practice:</strong> Highlighting soft consonants</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Completion button container */}
-                    <div className="pt-4 border-t border-slate-200/40 flex justify-between items-center">
-                      <span className="text-[10px] text-slate-400 font-bold">Document pages: 1 of 1</span>
-                      
-                      {lessonCompleted ? (
-                        <span className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 animate-[scaleIn_0.2s_ease-out]">
-                          <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500" /> Lesson Completed! +20 XP
-                        </span>
-                      ) : (
-                        <button
-                          onClick={handleCompleteLesson}
-                          className="btn-primary text-xs py-1.5 px-4 inline-flex items-center gap-1"
+                  return (
+                    <div className="w-full bg-slate-50 border border-slate-200/80 rounded-xl overflow-hidden flex flex-col shadow-inset">
+                      {isVideo ? (
+                        <video
+                          controls
+                          className="w-full max-h-[420px] bg-black rounded-t-xl"
+                          src={publicUrl}
+                          preload="metadata"
                         >
-                          Mark Completed! (+20 XP)
-                        </button>
+                          Your browser does not support the video element.
+                        </video>
+                      ) : isPdf ? (
+                        <iframe
+                          src={publicUrl}
+                          className="w-full h-[480px] border-0"
+                          title={activeLesson.title}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center p-8 gap-4 min-h-[200px]">
+                          <FileText className="w-10 h-10 text-slate-300" />
+                          <p className="text-xs text-slate-500">Preview not available for this file type.</p>
+                          <a
+                            href={publicUrl}
+                            download
+                            className="btn-primary text-xs py-1.5 px-4 inline-flex items-center gap-1"
+                          >
+                            Download File
+                          </a>
+                        </div>
                       )}
-                    </div>
 
-                  </div>
-                ) : (
+                      {/* Completion button bar */}
+                      <div className="px-4 py-3 border-t border-slate-200/40 flex justify-between items-center bg-white">
+                        <span className="text-[10px] text-slate-400 font-medium font-mono truncate max-w-[60%]">{activeLesson.filePath}</span>
+                        {lessonCompleted ? (
+                          <span className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 animate-[scaleIn_0.2s_ease-out]">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Lesson Completed! +20 XP
+                          </span>
+                        ) : (
+                          <button
+                            onClick={handleCompleteLesson}
+                            className="btn-primary text-xs py-1.5 px-4 inline-flex items-center gap-1"
+                          >
+                            Mark Completed! (+20 XP)
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })() : (
                   // Locked Premium Warning Overlay Inside Viewer
                   <div className="w-full bg-slate-50 border border-slate-100 rounded-xl p-8 text-center space-y-4 py-12">
                     <div className="w-16 h-16 bg-amber-50 border border-amber-200 text-amber-500 flex items-center justify-center rounded-2xl mx-auto shadow-sm">
                       <Lock className="w-8 h-8" />
                     </div>
-
                     <h4 className="font-display font-extrabold text-slate-800 text-base">Premium Curriculum Lock</h4>
                     <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
                       Syllabus media documents and PDF files for premium courses are locked. Simulate a sandbox license checkout using the button above to unlock immediate access!

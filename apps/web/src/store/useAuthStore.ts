@@ -19,15 +19,39 @@ export interface UnlockedBadge {
   unlockedAt: string;
 }
 
+export interface ActivityFeedItem {
+  text: string;
+  date: string;
+}
+
+export interface PurchaseHistoryItem {
+  id: string;
+  amount: string;
+  createdAt: string;
+  courseTitle: string;
+}
+
+export interface QuizHistoryItem {
+  id: string;
+  score: number;
+  passed: boolean;
+  attemptedAt: string;
+  quizTitle: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
   role: 'STUDENT' | 'ADMIN' | 'DEVELOPER';
   avatarUrl: string | null;
+  forcePasswordReset?: boolean;
   impersonatedBy?: string;
   stats: UserStats;
   badges: UnlockedBadge[];
+  activityFeed?: ActivityFeedItem[];
+  purchaseHistory?: PurchaseHistoryItem[];
+  quizHistory?: QuizHistoryItem[];
 }
 
 interface AuthState {
@@ -40,6 +64,7 @@ interface AuthState {
   fetchProfile: () => Promise<UserProfile | null>;
   login: (credentials: { email: string; password?: string }) => Promise<void>;
   signup: (userData: { name: string; email: string; password?: string; avatarUrl: string }) => Promise<void>;
+  googleLogin: (userData: { name: string; email: string; avatarUrl?: string }) => Promise<void>;
   logout: () => Promise<void>;
   unimpersonate: () => Promise<void>;
   clearError: () => void;
@@ -86,6 +111,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         body: JSON.stringify(userData),
       });
       // Signup automatically logs the user in on the backend
+      const user = await apiFetch<UserProfile>('/api/profile');
+      set({ user, isAuthenticated: true, isLoading: false });
+    } catch (err: any) {
+      set({ error: err.message, isLoading: false });
+      throw err;
+    }
+  },
+
+  googleLogin: async (userData) => {
+    set({ isLoading: true, error: null });
+    try {
+      await apiFetch('/api/auth/google', {
+        method: 'POST',
+        body: JSON.stringify(userData),
+      });
       const user = await apiFetch<UserProfile>('/api/profile');
       set({ user, isAuthenticated: true, isLoading: false });
     } catch (err: any) {

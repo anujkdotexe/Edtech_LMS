@@ -1,5 +1,9 @@
 # 06. API Specifications Document
 
+This document outlines the API endpoints available in the Antigravity LMS Monorepo, covering Authentication, Student, Course/Syllabus, Quiz, Administration CRM, and Developer tools.
+
+---
+
 ## 1. Authentication Router
 
 ### POST `/api/auth/signup`
@@ -18,6 +22,19 @@ Creates a new student account.
     ```json
     { "success": true, "message": "User registered successfully" }
     ```
+
+### POST `/api/auth/google`
+Federated Google OAuth callback simulator that automatically registers new users or merges/authenticates existing email accounts.
+- **Request Body**:
+  ```json
+  {
+    "email": "user@gmail.com",
+    "name": "Google User",
+    "avatarUrl": "https://api.dicebear.com/7.x/pixel-art/svg"
+  }
+  ```
+- **Responses**:
+  - `200 OK`: Sets authenticating JWT cookies.
 
 ### POST `/api/auth/login`
 Authenticates credentials, returns user profile, and sets HTTP-Only cookies.
@@ -43,12 +60,6 @@ Authenticates credentials, returns user profile, and sets HTTP-Only cookies.
   }
   ```
 
-### POST `/api/auth/refresh`
-Exchanges a valid refresh token cookie for a new short-lived access token cookie.
-- **Responses**:
-  - `200 OK`: Sets a fresh `token` cookie.
-  - `401 Unauthorized`: Redirect to login.
-
 ---
 
 ## 2. Courses & Syllabus Router
@@ -57,36 +68,25 @@ Exchanges a valid refresh token cookie for a new short-lived access token cookie
 Returns all courses with their localization meta matched to the requested locale header.
 - **Headers**:
   - `Accept-Language: fr` (defaults to `en`)
-- **Response Body (`200 OK`)**:
-  ```json
-  [
-    {
-      "id": "e3e3e3e3-c3c3-4c4c-acac-d3d3d3d3d3d3",
-      "cefrLevel": "A1",
-      "price": 0.00,
-      "isPremium": false,
-      "isUnlocked": true,
-      "title": "Français Élémentaire",
-      "description": "Apprenez les bases du français."
-    }
-  ]
-  ```
+
+### POST `/api/courses`
+Creates a course catalog item. Restricted to Admin/Developer.
+
+### GET `/api/courses/:id`
+Retrieves a detailed course syllabus with modules and lessons.
+
+### PUT `/api/courses/:id`
+Updates course metadata.
+
+### DELETE `/api/courses/:id`
+Deletes a course and checks active enrollments.
 
 ### POST `/api/courses/:id/purchase`
 Initiates a mock purchase, registering order states.
 - **Request Body**:
   ```json
   {
-    "simulatedStatus": "SUCCESS" -- or "FAILED" to mock checkout outcomes
-  }
-  ```
-- **Response Body (`200 OK`)**:
-  ```json
-  {
-    "success": true,
-    "orderId": "b1b1b1b1-1111-2222-3333-444444444444",
-    "status": "SUCCESS",
-    "message": "Course successfully unlocked"
+    "simulatedStatus": "SUCCESS"
   }
   ```
 
@@ -95,69 +95,80 @@ Initiates a mock purchase, registering order states.
 ## 3. Quizzes Router
 
 ### GET `/api/quizzes`
-Lists all active quizzes and their rules according to localization header configurations.
+Lists all active quizzes and their rules.
 
 ### GET `/api/quizzes/:id`
-Retrieves all multiple-choice questions for a specific quiz (14 cards).
-- **Response Body (`200 OK`)**:
-  ```json
-  {
-    "quizId": "q1q1q1q1-2222-3333-4444-555555555555",
-    "title": "French Present Tense Vocab",
-    "questions": [
-      {
-        "id": "question-uuid-1",
-        "questionText": "What is the translation for 'The Bread'?",
-        "optionA": "La Pomme",
-        "optionB": "Le Pain",
-        "optionC": "Le Vin",
-        "optionD": "L'Eau",
-        "orderIndex": 1
-      }
-    ]
-  }
-  ```
+Retrieves all multiple-choice questions for a specific quiz.
 
 ### POST `/api/quizzes/:id/submit`
-Validates student quiz answers, computes score, increments XP, checks streaks, and awards achievements.
-- **Request Body**:
-  ```json
-  {
-    "answers": [
-      { "questionId": "question-uuid-1", "selectedOption": "B" }
-    ]
-  }
-  ```
-- **Response Body (`200 OK`)**:
-  ```json
-  {
-    "score": 100,
-    "passed": true,
-    "xpEarned": 50,
-    "newTotalXp": 450,
-    "didLevelUp": false,
-    "newLevel": 2,
-    "currentStreak": 5,
-    "badgesUnlocked": [
-      { "badgeId": "scholar_1", "name": "Scholar Level 1" }
-    ]
-  }
-  ```
+Validates quiz answers, computes score, increments XP, checks streaks, and awards achievements.
 
 ---
 
 ## 4. Administrative Control Router
 
-### POST `/api/admin/students/import`
-Processes CSV bulk onboarding, generating credentials and printing passwords to standard logs.
-- **Content-Type**: `multipart/form-data`
-- **Request File**: `students.csv` (contains columns `name,email`)
+### GET `/api/admin/analytics/dashboard`
+Returns revenue overview, active students counter, weekly signup trends, and top streak leaders.
+
+### GET `/api/admin/analytics/courses/:courseId`
+Calculates completion rates and drop-off metrics per lesson.
 - **Response Body (`200 OK`)**:
   ```json
   {
-    "success": true,
-    "importedCount": 45,
-    "message": "Credentials printed to standard system logs. Force-reset scheduled."
+    "courseId": "course-uuid",
+    "enrolledCount": 15,
+    "totalLessons": 5,
+    "dropoffAnalysis": [
+      {
+        "lessonId": "lesson-1",
+        "position": 1,
+        "completionCount": 14,
+        "completionRate": 93,
+        "dropoffPct": 7
+      }
+    ]
+  }
+  ```
+
+### PUT `/api/admin/modules/:moduleId/reorder-lessons`
+Updates ordering index sequentially for module lessons.
+- **Request Body**:
+  ```json
+  {
+    "orderedLessonIds": ["lesson-uuid-1", "lesson-uuid-2"]
+  }
+  ```
+
+### POST `/api/admin/students`
+Manually adds single student profile and registers an onboarding invitation.
+
+### POST `/api/admin/students/bulk-enroll`
+Grants manual zero-cost enrollment to multiple students.
+- **Request Body**:
+  ```json
+  {
+    "studentIds": ["id-1", "id-2"],
+    "courseId": "course-uuid"
+  }
+  ```
+
+### POST `/api/admin/students/revoke`
+Revokes active course access for a student, setting enrollment state to REFUNDED.
+- **Request Body**:
+  ```json
+  {
+    "studentId": "student-uuid",
+    "courseId": "course-uuid"
+  }
+  ```
+
+### POST `/api/admin/students/message`
+Mock composes and sends a message/notification to a student, logged in audits.
+- **Request Body**:
+  ```json
+  {
+    "studentId": "student-uuid",
+    "message": "Hello from LMS support!"
   }
   ```
 
@@ -166,21 +177,25 @@ Processes CSV bulk onboarding, generating credentials and printing passwords to 
 ## 5. Developer Control Router
 
 ### POST `/api/dev/impersonate`
-Authorizes developer taking control of a specific user.
-- **Security Check**: Restricted to `role = 'DEVELOPER'` on backend session.
-- **Request Body**:
-  ```json
-  {
-    "studentEmail": "target_student@example.com"
-  }
-  ```
-- **Response Headers**:
-  - `Set-Cookie: impersonationToken=<jwt-signed-target>; HttpOnly; Secure; SameSite=Lax`
-- **Response Body (`200 OK`)**:
-  ```json
-  {
-    "success": true,
-    "impersonating": "target_student@example.com",
-    "message": "Session switched successfully. Impersonation warning banner activated."
-  }
-  ```
+Allows a developer to takeover a student session for debugging.
+
+### POST `/api/dev/unimpersonate`
+Clears active impersonation takeover cookie and returns to developer.
+
+### GET `/api/dev/feature-flags`
+Fetches a list of in-app feature flags and current rollout percentages.
+
+### POST `/api/dev/feature-flags/toggle`
+Enables/disables a specific feature flag with rollout properties.
+
+### GET `/api/dev/cache`
+Lists active in-memory cache keys, TTL, and values.
+
+### DELETE `/api/dev/cache/:key`
+Purges a specific cache key instantly.
+
+### GET `/api/dev/reconciliation`
+Generates a payment gateway reconciliation report auditing database orders against gateway transaction logs.
+
+### GET `/api/dev/queue`
+Streams background jobs status, pending counts, active counts, and retry thresholds.

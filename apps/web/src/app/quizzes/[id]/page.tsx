@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '../../../lib/api';
@@ -56,12 +56,43 @@ export default function QuizArenaPage({ params }: { params: { id: string } }) {
   // Results States
   const [submitResult, setSubmitResult] = useState<SubmitResult | null>(null);
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
+  const isExitingRef = useRef(false);
 
   useEffect(() => {
     if (isAuthenticated) {
       loadQuizQuestions();
     }
   }, [isAuthenticated, params.id]);
+
+  // Intercept browser window/tab closes or reloads mid-quiz
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!submitResult && quiz) {
+        e.preventDefault();
+        e.returnValue = 'Are you sure you want to leave? Your progress will be lost.';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [submitResult, quiz]);
+
+  // Intercept browser back button presses mid-quiz
+  useEffect(() => {
+    if (submitResult || !quiz || isExitingRef.current) return;
+    const handlePopState = () => {
+      if (isExitingRef.current) return;
+      window.history.pushState(null, '', window.location.href);
+      setShowExitWarning(true);
+    };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [submitResult, quiz]);
 
   const loadQuizQuestions = async () => {
     setLoading(true);
@@ -101,6 +132,7 @@ export default function QuizArenaPage({ params }: { params: { id: string } }) {
   };
 
   const handleConfirmExit = () => {
+    isExitingRef.current = true;
     setShowExitWarning(false);
     router.push('/');
   };

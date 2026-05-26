@@ -74,6 +74,7 @@ export const getCoursesHandler = async (request: FastifyRequest, reply: FastifyR
         cefrLevel: course.cefrLevel,
         price: parseFloat(course.price),
         isPremium: course.isPremium,
+        isPublished: course.isPublished,
         isUnlocked: !!isUnlocked,
         title: trans ? trans.title : 'Untitled Course',
         description: trans ? trans.description : '',
@@ -82,7 +83,7 @@ export const getCoursesHandler = async (request: FastifyRequest, reply: FastifyR
 
     reply.status(200).send(resolvedCourses);
   } catch (error) {
-    console.error('❌ Error loading courses catalog:', error);
+    console.error('[ERROR] Error loading courses catalog:', error);
     reply.status(500).send({ error: 'Internal Server Error', message: 'Could not fetch courses' });
   }
 };
@@ -195,13 +196,14 @@ export const getCourseByIdHandler = async (request: FastifyRequest, reply: Fasti
       cefrLevel: course.cefrLevel,
       price: parseFloat(course.price),
       isPremium: course.isPremium,
+      isPublished: course.isPublished,
       isUnlocked,
       title: courseTrans ? courseTrans.title : 'Untitled Course',
       description: courseTrans ? courseTrans.description : '',
       modules: syllabusModules,
     });
   } catch (error) {
-    console.error('❌ Error fetching syllabus details:', error);
+    console.error('[ERROR] Error fetching syllabus details:', error);
     reply.status(500).send({ error: 'Internal Server Error', message: 'Could not fetch syllabus' });
   }
 };
@@ -290,8 +292,8 @@ export const purchaseCourseHandler = async (request: FastifyRequest, reply: Fast
       });
     }
   } catch (error) {
-    console.error('❌ Error handling course purchase:', error);
-    reply.status(500).send({ error: 'Internal Server Error', message: 'Checkout simulation failed' });
+    console.error('[ERROR] Error in checkout simulation:', error);
+    reply.status(500).send({ error: 'Internal Server Error', message: 'Checkout transaction failed' });
   }
 };
 
@@ -352,7 +354,7 @@ export const createCourseHandler = async (request: FastifyRequest, reply: Fastif
       },
     });
   } catch (error) {
-    console.error('❌ Error creating course:', error);
+    console.error('[ERROR] Error creating course:', error);
     reply.status(500).send({ error: 'Internal Server Error', message: 'Could not create course' });
   }
 };
@@ -365,10 +367,11 @@ export const updateCourseHandler = async (request: FastifyRequest, reply: Fastif
   }
 
   const { id } = request.params as { id: string };
-  const { cefrLevel, price, isPremium, title, description, locale } = request.body as {
+  const { cefrLevel, price, isPremium, isPublished, title, description, locale } = request.body as {
     cefrLevel?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
     price?: number;
     isPremium?: boolean;
+    isPublished?: boolean;
     title?: string;
     description?: string;
     locale?: string;
@@ -384,6 +387,7 @@ export const updateCourseHandler = async (request: FastifyRequest, reply: Fastif
     if (cefrLevel !== undefined) courseUpdates.cefrLevel = cefrLevel;
     if (price !== undefined) courseUpdates.price = String(price);
     if (isPremium !== undefined) courseUpdates.isPremium = isPremium;
+    if (isPublished !== undefined) courseUpdates.isPublished = isPublished;
 
     const [updatedCourse] = await db
       .update(schema.courses)
@@ -441,7 +445,7 @@ export const updateCourseHandler = async (request: FastifyRequest, reply: Fastif
       message: 'Course updated successfully',
     });
   } catch (error) {
-    console.error('❌ Error updating course:', error);
+    console.error('[ERROR] Error updating course:', error);
     reply.status(500).send({ error: 'Internal Server Error', message: 'Could not update course' });
   }
 };
@@ -479,7 +483,7 @@ export const deleteCourseHandler = async (request: FastifyRequest, reply: Fastif
       message: 'Course deleted successfully',
     });
   } catch (error) {
-    console.error('❌ Error deleting course:', error);
+    console.error('[ERROR] Error deleting course:', error);
     reply.status(500).send({ error: 'Internal Server Error', message: 'Could not delete course' });
   }
 };

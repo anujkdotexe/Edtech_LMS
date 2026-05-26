@@ -77,11 +77,11 @@ export const importStudentsHandler = async (request: FastifyRequest, reply: Fast
     });
 
     // Pro-actively print credentials to system logs for developer ease
-    console.log('🔑 --- BULK ONBOARDING CREDENTIALS LOG ---');
+    console.log('[INFO] --- BULK ONBOARDING CREDENTIALS LOG ---');
     printedCredentials.forEach(c => {
-      console.log(`👤 User: ${c.email} | Temporary Password: ${c.tempPass}`);
+      console.log(`[INFO] User: ${c.email} | Temporary Password: ${c.tempPass}`);
     });
-    console.log('🔑 ----------------------------------------');
+    console.log('[INFO] ----------------------------------------');
 
     reply.status(200).send({
       success: true,
@@ -89,7 +89,7 @@ export const importStudentsHandler = async (request: FastifyRequest, reply: Fast
       message: 'Credentials printed to standard system logs. Force-reset scheduled.',
     });
   } catch (error) {
-    console.error('❌ Error bulk importing students:', error);
+    console.error('[ERROR] Error bulk importing students:', error);
     reply.status(500).send({ error: 'Internal Server Error', message: 'Bulk student onboarding failed' });
   }
 };

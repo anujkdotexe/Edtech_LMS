@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useAuthStore } from '../../store/useAuthStore';
+import { useAuthStore, ActivityFeedItem, PurchaseHistoryItem, QuizHistoryItem } from '../../store/useAuthStore';
 import { apiFetch } from '../../lib/api';
 import { 
   User, Award, Flame, Sparkles, CheckCircle2, AlertCircle, Save, 
@@ -281,7 +281,7 @@ export default function ProfilePage() {
             </h3>
             <div className="space-y-3">
               {(user.activityFeed || []).length > 0 ? (
-                user.activityFeed.map((activity: any, idx: number) => (
+                (user.activityFeed as ActivityFeedItem[]).map((activity, idx) => (
                   <div key={idx} className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0 mt-0.5">
                       <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
@@ -468,7 +468,7 @@ export default function ProfilePage() {
                 </h4>
                 <div className="space-y-2">
                   {(user.purchaseHistory || []).length > 0 ? (
-                    user.purchaseHistory.map((purchase: any) => (
+                    (user.purchaseHistory as PurchaseHistoryItem[]).map((purchase) => (
                       <div key={purchase.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
                         <p className="text-xs font-bold text-slate-700 truncate">{purchase.courseTitle}</p>
                         <div className="flex justify-between items-center mt-1">
@@ -490,7 +490,7 @@ export default function ProfilePage() {
                 </h4>
                 <div className="space-y-2">
                   {(user.quizHistory || []).length > 0 ? (
-                    user.quizHistory.map((quiz: any) => (
+                    (user.quizHistory as QuizHistoryItem[]).map((quiz) => (
                       <div key={quiz.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
                         <div className="truncate pr-2">
                           <p className="text-xs font-bold text-slate-700 truncate">{quiz.quizTitle}</p>

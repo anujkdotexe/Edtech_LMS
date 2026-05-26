@@ -303,3 +303,184 @@ export const getAdvancedLogsHandler = async (request: FastifyRequest, reply: Fas
 };
 
 
+// 7. FEATURE FLAGS MANAGEMENT
+// In-memory store for zero-cost feature flags (simulates Redis feature flag service)
+const featureFlagsStore: Record<string, { enabled: boolean; description: string; rolloutPct: number; updatedAt: string }> = {
+  'GOOGLE_OAUTH': { enabled: true, description: 'Allow Google federated sign-in via OAuth2', rolloutPct: 100, updatedAt: new Date().toISOString() },
+  'LEADERBOARD_V2': { enabled: false, description: 'Experimental ranked XP leaderboard with weekly resets', rolloutPct: 0, updatedAt: new Date().toISOString() },
+  'AI_TIPS': { enabled: false, description: 'Personalized AI-generated daily learning tips', rolloutPct: 0, updatedAt: new Date().toISOString() },
+  'STREAK_FREEZE': { enabled: true, description: 'Allow students to purchase streak freeze protection', rolloutPct: 50, updatedAt: new Date().toISOString() },
+  'PAYMENT_RECONCILIATION': { enabled: true, description: 'Run automated payment reconciliation checks on new orders', rolloutPct: 100, updatedAt: new Date().toISOString() },
+  'DARK_MODE': { enabled: false, description: 'System-wide dark mode toggle override for all users', rolloutPct: 0, updatedAt: new Date().toISOString() },
+};
+
+export const getFeatureFlagsHandler = async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const flags = Object.entries(featureFlagsStore).map(([key, val]) => ({
+      key,
+      ...val,
+    }));
+    reply.status(200).send({ flags });
+  } catch (error) {
+    console.error('[ERROR] Error fetching feature flags:', error);
+    reply.status(500).send({ error: 'Internal Server Error' });
+  }
+};
+
+export const toggleFeatureFlagHandler = async (
+  request: FastifyRequest<{ Body: { key: string; enabled: boolean; rolloutPct?: number } }>,
+  reply: FastifyReply
+) => {
+  const { key, enabled, rolloutPct } = request.body;
+  try {
+    if (!featureFlagsStore[key]) {
+      reply.status(404).send({ error: 'Not Found', message: `Feature flag '${key}' does not exist` });
+      return;
+    }
+
+    featureFlagsStore[key].enabled = enabled;
+    if (rolloutPct !== undefined) featureFlagsStore[key].rolloutPct = rolloutPct;
+    featureFlagsStore[key].updatedAt = new Date().toISOString();
+
+    await db.insert(schema.auditLogs).values({
+      action: 'DEV_FEATURE_FLAG_TOGGLE',
+      details: `Developer ${enabled ? 'enabled' : 'disabled'} feature flag '${key}' (rollout: ${featureFlagsStore[key].rolloutPct}%)`,
+      userId: request.user!.userId,
+    });
+
+    reply.status(200).send({ success: true, flag: { key, ...featureFlagsStore[key] } });
+  } catch (error) {
+    console.error('[ERROR] Error toggling feature flag:', error);
+    reply.status(500).send({ error: 'Internal Server Error' });
+  }
+};
+
+// 8. CACHE INSPECTOR (Simulated key-value cache without Redis dependency)
+const simulatedCache: Record<string, { value: string; ttlSeconds: number; createdAt: string }> = {
+  'leaderboard:global': { value: '{"top":["alice","bob","charlie"]}', ttlSeconds: 300, createdAt: new Date(Date.now() - 120000).toISOString() },
+  'settings:public': { value: '{"maintenanceMode":false,"tip":"Study daily!"}', ttlSeconds: 600, createdAt: new Date(Date.now() - 60000).toISOString() },
+  'course:catalog:list': { value: '[{"id":"c1","title":"A1 French"}]', ttlSeconds: 900, createdAt: new Date(Date.now() - 300000).toISOString() },
+  'quiz:attempts:today': { value: '42', ttlSeconds: 86400, createdAt: new Date(Date.now() - 3600000).toISOString() },
+};
+
+export const getCacheKeysHandler = async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const keys = Object.entries(simulatedCache).map(([key, entry]) => {
+      const ageMs = Date.now() - new Date(entry.createdAt).getTime();
+      const remainingTtl = Math.max(0, entry.ttlSeconds - Math.floor(ageMs / 1000));
+      return {
+        key,
+        valuePreview: entry.value.substring(0, 80) + (entry.value.length > 80 ? '...' : ''),
+        ttlSeconds: entry.ttlSeconds,
+        remainingTtl,
+        createdAt: entry.createdAt,
+        expired: remainingTtl === 0,
+      };
+    });
+    reply.status(200).send({ cacheKeys: keys, totalKeys: keys.length });
+  } catch (error) {
+    console.error('[ERROR] Error fetching cache keys:', error);
+    reply.status(500).send({ error: 'Internal Server Error' });
+  }
+};
+
+export const deleteCacheKeyHandler = async (
+  request: FastifyRequest<{ Params: { key: string } }>,
+  reply: FastifyReply
+) => {
+  const key = decodeURIComponent(request.params.key);
+  try {
+    if (!simulatedCache[key]) {
+      reply.status(404).send({ error: 'Not Found', message: `Cache key '${key}' not found` });
+      return;
+    }
+    delete simulatedCache[key];
+    await db.insert(schema.auditLogs).values({
+      action: 'DEV_CACHE_KEY_DELETED',
+      details: `Developer manually purged cache key: ${key}`,
+      userId: request.user!.userId,
+    });
+    reply.status(200).send({ success: true, message: `Cache key '${key}' deleted` });
+  } catch (error) {
+    console.error('[ERROR] Error deleting cache key:', error);
+    reply.status(500).send({ error: 'Internal Server Error' });
+  }
+};
+
+// 9. PAYMENT RECONCILIATION REPORT
+export const getReconciliationReportHandler = async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const allOrders = await db.select().from(schema.orders);
+
+    const successOrders = allOrders.filter(o => o.status === 'SUCCESS');
+    const failedOrders = allOrders.filter(o => o.status === 'FAILED');
+    const refundedOrders = allOrders.filter(o => o.status === 'REFUNDED');
+    const pendingOrders = allOrders.filter(o => o.status === 'PENDING');
+
+    const dbTotalRevenue = successOrders.reduce((sum, o) => sum + Number(o.amount || 0), 0);
+
+    // Simulate gateway totals (slight variance to demonstrate reconciliation)
+    const gatewayTotalRevenue = dbTotalRevenue * 0.999; // 0.1% processing fee variance
+    const variance = dbTotalRevenue - gatewayTotalRevenue;
+    const isReconciled = Math.abs(variance) < 1.0;
+
+    // Flag any orders with unusual patterns
+    const flaggedOrders = allOrders.filter(o =>
+      o.status === 'SUCCESS' && o.transactionId && o.transactionId.startsWith('MANUAL_')
+    );
+
+    reply.status(200).send({
+      reconciliationStatus: isReconciled ? 'RECONCILED' : 'VARIANCE_DETECTED',
+      summary: {
+        totalOrders: allOrders.length,
+        successCount: successOrders.length,
+        failedCount: failedOrders.length,
+        refundedCount: refundedOrders.length,
+        pendingCount: pendingOrders.length,
+      },
+      revenue: {
+        dbTotalRevenue: Math.round(dbTotalRevenue * 100) / 100,
+        gatewayTotalRevenue: Math.round(gatewayTotalRevenue * 100) / 100,
+        variance: Math.round(variance * 100) / 100,
+        variancePct: ((Math.abs(variance) / (dbTotalRevenue || 1)) * 100).toFixed(4),
+      },
+      flaggedOrders: flaggedOrders.slice(0, 10).map(o => ({
+        orderId: o.id,
+        userId: o.userId,
+        amount: o.amount,
+        transactionId: o.transactionId,
+        reason: 'Manual admin enrollment bypass',
+        createdAt: o.createdAt,
+      })),
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[ERROR] Error generating reconciliation report:', error);
+    reply.status(500).send({ error: 'Internal Server Error' });
+  }
+};
+
+// 10. QUEUE MONITOR (Simulated background job queue)
+const jobQueue: Array<{ id: string; type: string; status: string; payload: any; attempts: number; createdAt: string; processedAt?: string }> = [
+  { id: 'job_001', type: 'STREAK_RESET_CRON', status: 'COMPLETED', payload: { usersReset: 12 }, attempts: 1, createdAt: new Date(Date.now() - 86400000).toISOString(), processedAt: new Date(Date.now() - 86399000).toISOString() },
+  { id: 'job_002', type: 'WELCOME_EMAIL', status: 'COMPLETED', payload: { userId: 'u_abc', email: 'new@lms.local' }, attempts: 1, createdAt: new Date(Date.now() - 3600000).toISOString(), processedAt: new Date(Date.now() - 3599000).toISOString() },
+  { id: 'job_003', type: 'PAYMENT_WEBHOOK', status: 'FAILED', payload: { orderId: 'ord_fail', reason: 'Timeout' }, attempts: 3, createdAt: new Date(Date.now() - 1800000).toISOString() },
+  { id: 'job_004', type: 'CSV_IMPORT', status: 'COMPLETED', payload: { importedCount: 5 }, attempts: 1, createdAt: new Date(Date.now() - 900000).toISOString(), processedAt: new Date(Date.now() - 899000).toISOString() },
+  { id: 'job_005', type: 'LEADERBOARD_REFRESH', status: 'PENDING', payload: { scheduledFor: new Date(Date.now() + 3600000).toISOString() }, attempts: 0, createdAt: new Date(Date.now() - 60000).toISOString() },
+];
+
+export const getQueueMonitorHandler = async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const summary = {
+      total: jobQueue.length,
+      pending: jobQueue.filter(j => j.status === 'PENDING').length,
+      completed: jobQueue.filter(j => j.status === 'COMPLETED').length,
+      failed: jobQueue.filter(j => j.status === 'FAILED').length,
+      retrying: jobQueue.filter(j => j.attempts > 1 && j.status !== 'COMPLETED').length,
+    };
+    reply.status(200).send({ summary, jobs: jobQueue });
+  } catch (error) {
+    console.error('[ERROR] Error fetching queue monitor:', error);
+    reply.status(500).send({ error: 'Internal Server Error' });
+  }
+};

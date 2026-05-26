@@ -2,11 +2,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { apiFetch } from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { 
   Terminal, ShieldAlert, Users, Database, Clipboard, Award, 
-  Flame, Trash2, Shield, UserCheck, CheckCircle2, AlertCircle 
+  Flame, Trash2, Shield, UserCheck, CheckCircle2, AlertCircle,
+  Activity, Flag, Server, DollarSign, List
 } from 'lucide-react';
 
 interface AuditLog {
@@ -55,13 +57,18 @@ export default function DevConsolePage() {
   const { user, isAuthenticated, fetchProfile } = useAuthStore();
   
   // Tab Management
-  const [activeTab, setActiveTab] = useState<'IMPERSONATION' | 'CRM' | 'OVERRIDES' | 'DIAGNOSTICS'>('IMPERSONATION');
+  const [activeTab, setActiveTab] = useState<'IMPERSONATION' | 'CRM' | 'OVERRIDES' | 'DIAGNOSTICS' | 'FEATURE_FLAGS' | 'CACHE' | 'RECONCILIATION' | 'QUEUE'>('IMPERSONATION');
   
   // Core lists
   const [students, setStudents] = useState<StudentRef[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [advancedLogs, setAdvancedLogs] = useState<AdvancedLogs | null>(null);
+  const [featureFlags, setFeatureFlags] = useState<any[]>([]);
+  const [cacheKeys, setCacheKeys] = useState<any[]>([]);
+  const [reconciliation, setReconciliation] = useState<any | null>(null);
+  const [queueJobs, setQueueJobs] = useState<any[]>([]);
+  const [queueSummary, setQueueSummary] = useState<any | null>(null);
 
   // Impersonation state
   const [targetEmail, setTargetEmail] = useState('');
@@ -110,6 +117,31 @@ export default function DevConsolePage() {
       // 4. Fetch Advanced Logs
       const advLogsRes = await apiFetch<AdvancedLogs>('/api/dev/monitoring/advanced-logs');
       setAdvancedLogs(advLogsRes);
+
+      // 5. Fetch Feature Flags
+      try {
+        const flagsRes = await apiFetch<{ flags: any[] }>('/api/dev/feature-flags');
+        setFeatureFlags(flagsRes.flags || []);
+      } catch (_) {}
+
+      // 6. Fetch Cache Keys
+      try {
+        const cacheRes = await apiFetch<{ cacheKeys: any[] }>('/api/dev/cache');
+        setCacheKeys(cacheRes.cacheKeys || []);
+      } catch (_) {}
+
+      // 7. Fetch Reconciliation Report
+      try {
+        const reconRes = await apiFetch<any>('/api/dev/reconciliation');
+        setReconciliation(reconRes);
+      } catch (_) {}
+
+      // 8. Fetch Queue Monitor
+      try {
+        const queueRes = await apiFetch<{ summary: any; jobs: any[] }>('/api/dev/queue');
+        setQueueJobs(queueRes.jobs || []);
+        setQueueSummary(queueRes.summary);
+      } catch (_) {}
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to initialize developer dashboard data');
     } finally {
@@ -288,6 +320,41 @@ export default function DevConsolePage() {
           >
             <Database className="w-4 h-4" /> Audit & Diagnostics
           </button>
+
+          <button
+            onClick={() => setActiveTab('FEATURE_FLAGS')}
+            className={`w-full text-left p-3 rounded-lg text-xs font-bold flex items-center gap-2.5 transition ${activeTab === 'FEATURE_FLAGS' ? 'bg-primary text-white shadow' : 'text-slate-600 hover:bg-slate-50'}`}
+          >
+            <Flag className="w-4 h-4" /> Feature Flags
+          </button>
+
+          <button
+            onClick={() => setActiveTab('CACHE')}
+            className={`w-full text-left p-3 rounded-lg text-xs font-bold flex items-center gap-2.5 transition ${activeTab === 'CACHE' ? 'bg-primary text-white shadow' : 'text-slate-600 hover:bg-slate-50'}`}
+          >
+            <Server className="w-4 h-4" /> Cache Inspector
+          </button>
+
+          <button
+            onClick={() => setActiveTab('RECONCILIATION')}
+            className={`w-full text-left p-3 rounded-lg text-xs font-bold flex items-center gap-2.5 transition ${activeTab === 'RECONCILIATION' ? 'bg-primary text-white shadow' : 'text-slate-600 hover:bg-slate-50'}`}
+          >
+            <DollarSign className="w-4 h-4" /> Payment Reconciliation
+          </button>
+
+          <button
+            onClick={() => setActiveTab('QUEUE')}
+            className={`w-full text-left p-3 rounded-lg text-xs font-bold flex items-center gap-2.5 transition ${activeTab === 'QUEUE' ? 'bg-primary text-white shadow' : 'text-slate-600 hover:bg-slate-50'}`}
+          >
+            <List className="w-4 h-4" /> Queue Monitor
+          </button>
+
+          <Link
+            href="/dev/api-health"
+            className="w-full text-left p-3 rounded-lg text-xs font-bold flex items-center gap-2.5 transition text-emerald-600 hover:bg-emerald-50 bg-emerald-50/20 border border-emerald-100/50 mt-2"
+          >
+            <Activity className="w-4 h-4 text-emerald-500 animate-pulse" /> Real-Time API Health
+          </Link>
         </section>
 
         {/* Tab Detail Pane */}
@@ -582,6 +649,215 @@ export default function DevConsolePage() {
                 </div>
               )}
 
+            </div>
+          )}
+
+          {/* TAB 5: FEATURE FLAGS */}
+          {activeTab === 'FEATURE_FLAGS' && (
+            <div className="space-y-6">
+              <div className="space-y-1">
+                <h3 className="font-display font-extrabold text-slate-800 text-base">Feature Flags Management</h3>
+                <p className="text-xs text-slate-400">Enable or disable platform features with percentage-based rollouts. Changes take effect immediately (in-memory, no deploy required).</p>
+              </div>
+              <div className="space-y-3">
+                {featureFlags.map((flag) => (
+                  <div key={flag.key} className={`flex items-center justify-between p-4 rounded-xl border transition ${flag.enabled ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="space-y-0.5 flex-1 min-w-0 pr-4">
+                      <span className={`font-mono font-bold text-xs ${flag.enabled ? 'text-emerald-800' : 'text-slate-600'}`}>{flag.key}</span>
+                      <p className="text-[10px] text-slate-400 truncate">{flag.description}</p>
+                      <span className="text-[10px] text-slate-400">Rollout: <strong className="text-slate-600">{flag.rolloutPct}%</strong> &bull; Updated: {new Date(flag.updatedAt).toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${flag.enabled ? 'bg-emerald-200 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
+                        {flag.enabled ? 'ON' : 'OFF'}
+                      </span>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await apiFetch('/api/dev/feature-flags/toggle', {
+                              method: 'POST',
+                              body: JSON.stringify({ key: flag.key, enabled: !flag.enabled }),
+                            });
+                            const flagsRes = await apiFetch<{ flags: any[] }>('/api/dev/feature-flags');
+                            setFeatureFlags(flagsRes.flags || []);
+                          } catch (err: any) { setErrorMsg(err.message); }
+                        }}
+                        className={`text-[10px] font-bold px-3 py-1.5 rounded-lg border transition active:scale-95 ${
+                          flag.enabled
+                            ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-100'
+                            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-100'
+                        }`}
+                      >
+                        {flag.enabled ? 'Disable' : 'Enable'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {featureFlags.length === 0 && <p className="text-xs text-slate-400 text-center py-8">No feature flags available.</p>}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: CACHE INSPECTOR */}
+          {activeTab === 'CACHE' && (
+            <div className="space-y-6">
+              <div className="space-y-1">
+                <h3 className="font-display font-extrabold text-slate-800 text-base">Cache Inspector</h3>
+                <p className="text-xs text-slate-400">Browse active in-memory cache keys, view TTL countdowns, and manually purge stale entries.</p>
+              </div>
+              <div className="space-y-3">
+                {cacheKeys.map((entry) => (
+                  <div key={entry.key} className={`p-4 rounded-xl border transition ${entry.expired ? 'bg-red-50 border-red-100 opacity-60' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <span className="font-mono font-bold text-xs text-slate-800 block">{entry.key}</span>
+                        <span className="text-[10px] text-slate-400 block mt-0.5 truncate">{entry.valuePreview}</span>
+                        <div className="flex gap-3 mt-1.5">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${entry.expired ? 'bg-red-100 text-red-700' : 'bg-slate-200 text-slate-600'}`}>
+                            {entry.expired ? 'EXPIRED' : `TTL: ${entry.remainingTtl}s`}
+                          </span>
+                          <span className="text-[10px] text-slate-400">Max: {entry.ttlSeconds}s</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await apiFetch(`/api/dev/cache/${encodeURIComponent(entry.key)}`, { method: 'DELETE' });
+                            const cacheRes = await apiFetch<{ cacheKeys: any[] }>('/api/dev/cache');
+                            setCacheKeys(cacheRes.cacheKeys || []);
+                            setSuccessMsg(`Cache key '${entry.key}' purged successfully.`);
+                          } catch (err: any) { setErrorMsg(err.message); }
+                        }}
+                        className="text-[10px] font-bold px-3 py-1.5 rounded-lg border bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-100 transition active:scale-95 shrink-0"
+                      >
+                        Purge
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {cacheKeys.length === 0 && <p className="text-xs text-slate-400 text-center py-8">Cache is empty.</p>}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 7: PAYMENT RECONCILIATION */}
+          {activeTab === 'RECONCILIATION' && reconciliation && (
+            <div className="space-y-6">
+              <div className="space-y-1">
+                <h3 className="font-display font-extrabold text-slate-800 text-base">Payment Reconciliation Report</h3>
+                <p className="text-xs text-slate-400">Cross-references database order totals against simulated gateway totals to detect discrepancies.</p>
+              </div>
+
+              <div className={`flex items-center gap-3 p-4 rounded-xl border font-bold ${
+                reconciliation.reconciliationStatus === 'RECONCILED'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  : 'bg-amber-50 border-amber-200 text-amber-700'
+              }`}>
+                {reconciliation.reconciliationStatus === 'RECONCILED'
+                  ? <CheckCircle2 className="w-5 h-5" />
+                  : <AlertCircle className="w-5 h-5" />
+                }
+                <span className="text-sm">{reconciliation.reconciliationStatus === 'RECONCILED' ? 'All payments reconciled successfully.' : 'Variance detected between DB and gateway.'}</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-slate-50 rounded-xl p-3 border text-center">
+                  <span className="text-[9px] text-slate-400 block uppercase font-bold">Total Orders</span>
+                  <span className="text-xl font-black font-display text-slate-800">{reconciliation.summary.totalOrders}</span>
+                </div>
+                <div className="bg-emerald-50 rounded-xl p-3 border text-center">
+                  <span className="text-[9px] text-slate-400 block uppercase font-bold">Successful</span>
+                  <span className="text-xl font-black font-display text-emerald-700">{reconciliation.summary.successCount}</span>
+                </div>
+                <div className="bg-rose-50 rounded-xl p-3 border text-center">
+                  <span className="text-[9px] text-slate-400 block uppercase font-bold">Failed</span>
+                  <span className="text-xl font-black font-display text-rose-700">{reconciliation.summary.failedCount}</span>
+                </div>
+                <div className="bg-amber-50 rounded-xl p-3 border text-center">
+                  <span className="text-[9px] text-slate-400 block uppercase font-bold">Refunded</span>
+                  <span className="text-xl font-black font-display text-amber-700">{reconciliation.summary.refundedCount}</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl border p-4 space-y-2">
+                <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wide">Revenue Comparison</h4>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div><span className="text-[9px] text-slate-400 block uppercase">DB Total</span><span className="font-bold text-slate-800 text-sm">${reconciliation.revenue.dbTotalRevenue.toFixed(2)}</span></div>
+                  <div><span className="text-[9px] text-slate-400 block uppercase">Gateway Total</span><span className="font-bold text-slate-800 text-sm">${reconciliation.revenue.gatewayTotalRevenue.toFixed(2)}</span></div>
+                  <div><span className="text-[9px] text-slate-400 block uppercase">Variance</span><span className={`font-bold text-sm ${Number(reconciliation.revenue.variance) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>${reconciliation.revenue.variance.toFixed(2)} ({reconciliation.revenue.variancePct}%)</span></div>
+                </div>
+              </div>
+
+              {reconciliation.flaggedOrders.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Flagged Manual Enrollments</h4>
+                  <div className="divide-y divide-slate-100 border rounded-xl overflow-hidden">
+                    {reconciliation.flaggedOrders.map((o: any) => (
+                      <div key={o.orderId} className="p-3 bg-amber-50 text-[10px] flex justify-between">
+                        <span className="font-mono text-amber-700">{o.transactionId}</span>
+                        <span className="text-amber-600 font-bold">${o.amount?.toFixed(2)} - {o.reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[10px] text-slate-400 text-right">Generated at: {new Date(reconciliation.generatedAt).toLocaleString()}</p>
+            </div>
+          )}
+
+          {/* TAB 8: QUEUE MONITOR */}
+          {activeTab === 'QUEUE' && (
+            <div className="space-y-6">
+              <div className="space-y-1">
+                <h3 className="font-display font-extrabold text-slate-800 text-base">Background Job Queue Monitor</h3>
+                <p className="text-xs text-slate-400">View status of background workers: cron jobs, email dispatchers, webhook processors, and import tasks.</p>
+              </div>
+
+              {queueSummary && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-slate-50 border rounded-xl p-3 text-center">
+                    <span className="text-[9px] text-slate-400 block uppercase font-bold">Total Jobs</span>
+                    <span className="text-xl font-black font-display text-slate-800">{queueSummary.total}</span>
+                  </div>
+                  <div className="bg-emerald-50 border-emerald-100 border rounded-xl p-3 text-center">
+                    <span className="text-[9px] text-slate-400 block uppercase font-bold">Completed</span>
+                    <span className="text-xl font-black font-display text-emerald-700">{queueSummary.completed}</span>
+                  </div>
+                  <div className="bg-amber-50 border-amber-100 border rounded-xl p-3 text-center">
+                    <span className="text-[9px] text-slate-400 block uppercase font-bold">Pending</span>
+                    <span className="text-xl font-black font-display text-amber-700">{queueSummary.pending}</span>
+                  </div>
+                  <div className="bg-rose-50 border-rose-100 border rounded-xl p-3 text-center">
+                    <span className="text-[9px] text-slate-400 block uppercase font-bold">Failed</span>
+                    <span className="text-xl font-black font-display text-rose-700">{queueSummary.failed}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="divide-y divide-slate-100 border rounded-xl overflow-hidden">
+                {queueJobs.map((job) => (
+                  <div key={job.id} className="p-3.5 flex items-start justify-between gap-4 hover:bg-slate-50/50 transition">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[10px] font-bold text-slate-500">{job.id}</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase ${
+                          job.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                          job.status === 'FAILED' ? 'bg-rose-100 text-rose-700' :
+                          job.status === 'PENDING' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'
+                        }`}>{job.status}</span>
+                        {job.attempts > 1 && <span className="text-[9px] font-bold text-orange-600">Retries: {job.attempts}</span>}
+                      </div>
+                      <span className="text-xs font-bold text-slate-700">{job.type}</span>
+                      <span className="text-[10px] text-slate-400 block">Created: {new Date(job.createdAt).toLocaleString()}</span>
+                      {job.processedAt && <span className="text-[10px] text-emerald-600 block">Processed: {new Date(job.processedAt).toLocaleString()}</span>}
+                    </div>
+                    <div className="bg-slate-900 text-emerald-400 font-mono text-[9px] px-2 py-1 rounded max-w-[180px] overflow-hidden">
+                      {JSON.stringify(job.payload).substring(0, 50)}{JSON.stringify(job.payload).length > 50 ? '...' : ''}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

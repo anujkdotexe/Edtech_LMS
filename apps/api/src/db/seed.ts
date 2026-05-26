@@ -9,11 +9,11 @@ import { db } from './index';
 import * as schema from './schema';
 
 async function main() {
-  console.log('⏳ Starting database seeding...');
+  console.log('[INFO] Starting database seeding...');
 
   try {
     // 1. Clean existing tables
-    console.log('🧹 Purging old database tables...');
+    console.log('[INFO] Purging old database tables...');
     await db.delete(schema.auditLogs);
     await db.delete(schema.orders);
     await db.delete(schema.quizAttempts);
@@ -30,13 +30,13 @@ async function main() {
     await db.delete(schema.userStreaks);
     await db.delete(schema.userXp);
     await db.delete(schema.users);
-    console.log('✅ Purge complete.');
+    console.log('[OK] Purge complete.');
 
     // 2. Generate credentials hashes
     const defaultPasswordHash = await bcrypt.hash('password123', 10);
 
     // 3. Populate Users
-    console.log('👤 Provisioning system users...');
+    console.log('[INFO] Provisioning system users...');
     const [studentUser] = await db.insert(schema.users).values({
       name: 'Jane Student',
       email: 'student@lms.local',
@@ -61,10 +61,10 @@ async function main() {
       avatarUrl: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=developer',
     }).returning();
 
-    console.log('✅ Users provisioned.');
+    console.log('[OK] Users provisioned.');
 
     // 4. Provision User Stats (XP & Streaks)
-    console.log('📈 Setting up user XP & streak trackers...');
+    console.log('[INFO] Setting up user XP & streak trackers...');
     await db.insert(schema.userXp).values({
       userId: studentUser.id,
       totalXp: 120, // Start with some initial experience points
@@ -88,10 +88,10 @@ async function main() {
       { userId: adminUser.id, currentStreak: 0, longestStreak: 0 },
       { userId: devUser.id, currentStreak: 0, longestStreak: 0 },
     ]);
-    console.log('✅ XP & streak trackers set up.');
+    console.log('[OK] XP & streak trackers set up.');
 
     // 5. Populate Courses
-    console.log('📚 Populating courses...');
+    console.log('[INFO] Populating courses...');
     // French A1 (Free Course)
     const [frenchCourse] = await db.insert(schema.courses).values({
       cefrLevel: 'A1',
@@ -135,10 +135,10 @@ async function main() {
         description: 'Beherrschen Sie Nebensätze, drücken Sie abstrakte Meinungen aus und lernen Sie Vokabeln für Diskussionen.',
       },
     ]);
-    console.log('✅ Courses & translations seeded.');
+    console.log('[OK] Courses & translations seeded.');
 
     // 7. Course Modules
-    console.log('🗂️ Populating course modules...');
+    console.log('[INFO] Populating course modules...');
     // French A1 Modules
     const [frenchMod1] = await db.insert(schema.modules).values({
       courseId: frenchCourse.id,
@@ -165,10 +165,10 @@ async function main() {
       { moduleId: germanMod1.id, locale: 'en', title: 'Debate & Expressing Opinions' },
       { moduleId: germanMod1.id, locale: 'de', title: 'Debatte & Eigene Meinung' },
     ]);
-    console.log('✅ Modules seeded.');
+    console.log('[OK] Modules seeded.');
 
     // 8. Lessons
-    console.log('📖 Populating lessons...');
+    console.log('[INFO] Populating lessons...');
     // French Module 1 Lessons
     const [frenchLess1] = await db.insert(schema.lessons).values({
       moduleId: frenchMod1.id,
@@ -247,10 +247,10 @@ async function main() {
         summary: 'Wie man debattiert, Argumente vorträgt und B1-Nebensätze (weil, obwohl) anwendet.',
       },
     ]);
-    console.log('✅ Lessons seeded.');
+    console.log('[OK] Lessons seeded.');
 
     // 9. Interactive Quizzes (MCQ Engine)
-    console.log('❓ Populating interactive quizzes...');
+    console.log('[INFO] Populating interactive quizzes...');
     // Quiz 1: French Greetings (Easy, 50 XP)
     const [quizGreetings] = await db.insert(schema.quizzes).values({
       difficulty: 'EASY',
@@ -308,10 +308,10 @@ async function main() {
         rules: 'Meistern Sie Nebensätze (weil, obwohl) und Hauptsätze (aber, trotzdem). Verbzweit- und Verbletztstellung.',
       },
     ]);
-    console.log('✅ Quiz configurations seeded.');
+    console.log('[OK] Quiz configurations seeded.');
 
     // 10. Populate EXACTLY 14 Quiz Questions (Cheat-proof)
-    console.log('📝 Seeding exactly 14 quiz questions across quizzes...');
+    console.log('[INFO] Seeding exactly 14 quiz questions across quizzes...');
 
     await db.insert(schema.quizQuestions).values([
       // --- Quiz 1 (French Greetings): Questions 1 - 5 ---
@@ -461,18 +461,18 @@ async function main() {
       },
     ]);
 
-    console.log('✅ Exactly 14 quiz questions successfully seeded!');
+    console.log('[OK] Exactly 14 quiz questions successfully seeded!');
 
     // 11. Provision a completed badge for student to show off achievement persistence
-    console.log('🏆 Awarding first steps badge to student...');
+    console.log('[INFO] Awarding first steps badge to student...');
     await db.insert(schema.userBadges).values({
       userId: studentUser.id,
-      badgeId: 'first_steps',
+      badgeId: 'scholar_1',
       unlockedAt: new Date(),
     });
 
     // 12. Provision a successful order to student to unlock course access
-    console.log('💳 Seed successful orders...');
+    console.log('[INFO] Seeding successful orders...');
     await db.insert(schema.orders).values({
       userId: studentUser.id,
       courseId: frenchCourse.id, // Free course
@@ -481,9 +481,9 @@ async function main() {
       amount: '0.00',
     });
 
-    console.log('🚀 Seeding process completed successfully!');
+    console.log('[OK] Seeding process completed successfully!');
   } catch (error) {
-    console.error('❌ Error during seeding process:', error);
+    console.error('[ERROR] Error during seeding process:', error);
     process.exit(1);
   }
 }

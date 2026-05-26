@@ -8,6 +8,10 @@ const BADGE_REGISTRY = [
   { id: 'scholar_1', name: 'First Steps Scholar', description: 'Passed your first language quiz!' },
   { id: 'streak_3', name: 'Dedicated Learner', description: 'Maintained a 3-day learning streak!' },
   { id: 'level_5', name: 'Fluent Speaker', description: 'Reached Level 5!' },
+  { id: 'perfect_100', name: 'Perfect Score Master', description: 'Scored a flawless 100% on a quiz!' },
+  { id: 'streak_7', name: 'Unstoppable Habit', description: 'Achieved an amazing 7-day learning streak!' },
+  { id: 'level_10', name: 'Grandmaster Linguist', description: 'Reached Level 10 of language mastery!' },
+  { id: 'scholar_5', name: 'Academic Elite', description: 'Successfully passed 5 or more distinct quizzes!' },
 ];
 
 export const getProfileHandler = async (request: FastifyRequest, reply: FastifyReply) => {

@@ -4,12 +4,12 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { apiFetch } from '../../../lib/api';
-import { ShoppingCart, ArrowLeft, RefreshCw, XCircle, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, RefreshCw, XCircle, CheckCircle2, Download } from 'lucide-react';
 
 interface Payment {
   id: string;
   amount: string;
-  status: 'PENDING' | 'SUCCESS' | 'FAILED';
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
   transactionId: string | null;
   createdAt: string;
   studentName: string;
@@ -51,6 +51,25 @@ export default function AdminPaymentsPage() {
     }
   };
 
+  const handleExportCSV = async () => {
+    try {
+      const response = await fetch('/api/admin/payments/export', {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to export revenue CSV');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'revenue_export.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (err: any) {
+      alert(err.message || 'Error exporting CSV');
+    }
+  };
+
   if (!isAuthenticated || !['ADMIN', 'DEVELOPER'].includes(user?.role || '')) {
     return <div className="p-8 text-center text-red-500 font-bold">Unauthorized</div>;
   }
@@ -58,7 +77,7 @@ export default function AdminPaymentsPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-8 p-4 animate-[fadeIn_0.4s_ease-out]">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <Link href="/admin" className="p-2 hover:bg-slate-100 rounded-lg transition">
             <ArrowLeft className="w-5 h-5 text-slate-500" />
@@ -70,6 +89,12 @@ export default function AdminPaymentsPage() {
             <p className="text-sm text-slate-500">Monitor transactions and issue refunds</p>
           </div>
         </div>
+        <button
+          onClick={handleExportCSV}
+          className="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded-xl shadow-premium transition active:scale-95 flex items-center gap-2 text-sm"
+        >
+          <Download className="w-4 h-4" /> Export CSV
+        </button>
       </div>
 
       {/* Main Table */}
@@ -107,9 +132,13 @@ export default function AdminPaymentsPage() {
                         <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200 uppercase flex items-center gap-1 w-max">
                           <CheckCircle2 className="w-3 h-3" /> Paid
                         </span>
-                      ) : payment.status === 'FAILED' ? (
+                      ) : payment.status === 'REFUNDED' ? (
                         <span className="text-[10px] font-bold bg-red-50 text-red-700 px-2 py-1 rounded border border-red-200 uppercase flex items-center gap-1 w-max">
-                          <XCircle className="w-3 h-3" /> Failed / Refunded
+                          <XCircle className="w-3 h-3" /> Refunded
+                        </span>
+                      ) : payment.status === 'FAILED' ? (
+                        <span className="text-[10px] font-bold bg-rose-50 text-rose-700 px-2 py-1 rounded border border-rose-200 uppercase flex items-center gap-1 w-max">
+                          <XCircle className="w-3 h-3" /> Failed
                         </span>
                       ) : (
                         <span className="text-[10px] font-bold bg-amber-50 text-amber-700 px-2 py-1 rounded border border-amber-200 uppercase w-max block">

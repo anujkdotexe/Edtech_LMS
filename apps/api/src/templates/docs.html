@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antigravity LMS API Diagnostics Hub</title>
+  <!-- Outfit Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg: #07090e;
+      --card-bg: rgba(13, 17, 28, 0.7);
+      --card-bg-hover: rgba(22, 28, 45, 0.8);
+      --primary: #5c62f9;
+      --primary-hover: #4b50d9;
+      --primary-glow: rgba(92, 98, 249, 0.15);
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.15);
+      --warning: #f59e0b;
+      --warning-glow: rgba(245, 158, 11, 0.15);
+      --error: #f43f5e;
+      --error-glow: rgba(244, 63, 94, 0.15);
+      --protected: #a855f7;
+      --protected-glow: rgba(168, 85, 247, 0.15);
+      --text: #f3f4f6;
+      --text-muted: #8c9ba5;
+      --border: rgba(255, 255, 255, 0.05);
+      --border-hover: rgba(92, 98, 249, 0.3);
+      --drawer-bg: rgba(9, 11, 19, 0.95);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(92, 98, 249, 0.05) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.04) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-bottom: 50px;
+    }
+
+    /* Core container */
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 24px;
+      position: relative;
+      z-index: 10;
+    }
+
+    /* SVG Rule-based icons instead of emojis */
+    .icon {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    /* Header */
+    header {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 150px;
+      height: 150px;
+      background: linear-gradient(135deg, var(--primary) 0%, transparent 80%);
+      opacity: 0.1;
+      border-radius: 0 0 0 100%;
+    }
+
+    .header-top {
+      display: flex;
+      flex-direction: column;
+      md-flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .header-top {
+        flex-direction: row;
+        align-items: center;
+      }
+    }
+
+    .title-area h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, #ffffff, #8da0ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .title-area p {
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(92, 98, 249, 0.3);
+    }
+
+    .btn:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(92, 98, 249, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Stats Shelf */
+    .stats-shelf {
+      display: grid;
+      grid-template-cols: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .stats-shelf {
+        grid-template-cols: repeat(5, 1fr);
+      }
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .stat-card .label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-card .value {
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .stat-card.healthy .value { color: var(--success); }
+    .stat-card.protected .value { color: var(--protected); }
+    .stat-card.warning .value { color: var(--warning); }
+    .stat-card.error .value { color: var(--error); }
+    .stat-card.latency .value { color: #8da0ff; }
+
+    /* Controls */
+    .controls {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .controls {
+        flex-direction: row;
+        align-items: center;
+      }
+    }
+
+    .search-box {
+      flex: 1;
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px 12px 40px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .search-box input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 10px rgba(92, 98, 249, 0.1);
+    }
+
+    .search-box svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .filter-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-btn {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .filter-btn:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+    }
+
+    .filter-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+      box-shadow: 0 3px 8px rgba(92, 98, 249, 0.2);
+    }
+
+    /* Grid Layout */
+    .endpoints-grid {
+      display: grid;
+      grid-template-cols: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 992px) {
+      .endpoints-grid {
+        grid-template-cols: repeat(2, 1fr);
+      }
+    }
+
+    /* Endpoint Card */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 16px;
+      position: relative;
+    }
+
+    .card:hover {
+      background: var(--card-bg-hover);
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .card.active-selected {
+      border-color: var(--primary) !important;
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .method-path {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .method-pill {
+      font-size: 10px;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .method-pill.get {
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+    }
+
+    .method-pill.post {
+      background: rgba(59, 130, 246, 0.08);
+      border-color: rgba(59, 130, 246, 0.2);
+      color: #3b82f6;
+    }
+
+    .method-pill.put {
+      background: rgba(245, 158, 11, 0.08);
+      border-color: rgba(245, 158, 11, 0.2);
+      color: var(--warning);
+    }
+
+    .method-pill.delete {
+      background: rgba(244, 63, 94, 0.08);
+      border-color: rgba(244, 63, 94, 0.2);
+      color: var(--error);
+    }
+
+    .path-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Health Indicator */
+    .health-pill {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .health-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .health-pill.untested {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+    }
+    .health-pill.untested .health-dot { background: var(--text-muted); }
+
+    .health-pill.testing {
+      background: rgba(245, 158, 11, 0.05);
+      border-color: rgba(245, 158, 11, 0.1);
+      color: var(--warning);
+      animation: pulse 1.5s infinite;
+    }
+    .health-pill.testing .health-dot { background: var(--warning); }
+
+    .health-pill.healthy {
+      background: rgba(16, 185, 129, 0.05);
+      border-color: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      box-shadow: 0 0 10px var(--success-glow);
+    }
+    .health-pill.healthy .health-dot { background: var(--success); }
+
+    .health-pill.protected {
+      background: rgba(168, 85, 247, 0.05);
+      border-color: rgba(168, 85, 247, 0.1);
+      color: var(--protected);
+      box-shadow: 0 0 10px var(--protected-glow);
+    }
+    .health-pill.protected .health-dot { background: var(--protected); }
+
+    .health-pill.bad-request {
+      background: rgba(245, 158, 11, 0.05);
+      border-color: rgba(245, 158, 11, 0.1);
+      color: var(--warning);
+    }
+    .health-pill.bad-request .health-dot { background: var(--warning); }
+
+    .health-pill.broken {
+      background: rgba(244, 63, 94, 0.05);
+      border-color: rgba(244, 63, 94, 0.1);
+      color: var(--error);
+      box-shadow: 0 0 10px var(--error-glow);
+    }
+    .health-pill.broken .health-dot { background: var(--error); }
+
+    .card-body p {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-clamp: 2;
+      -webkit-line-clamp: 2;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.6;
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .card-tag {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .latency-pill {
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: #8da0ff;
+    }
+
+    /* Sliding Drawer */
+    .drawer-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .drawer-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: -100%;
+      width: 100%;
+      max-width: 680px;
+      height: 100%;
+      background: var(--drawer-bg);
+      border-left: 1px solid var(--border);
+      box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5);
+      z-index: 101;
+      transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    @media (max-width: 576px) {
+      .drawer {
+        max-width: 100%;
+      }
+    }
+
+    .drawer.open {
+      right: 0;
+    }
+
+    .drawer-header {
+      padding: 24px;
+      border-b: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    .drawer-title-area {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow: hidden;
+    }
+
+    .drawer-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px;
+      font-weight: 700;
+      word-break: break-all;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .drawer-close {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .drawer-close:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+    }
+
+    .drawer-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .detail-card {
+      background: rgba(255, 255, 255, 0.015);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .param-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .param-table th, .param-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    }
+
+    .param-table th {
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .param-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .param-type {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    .required-badge {
+      background: rgba(244, 63, 94, 0.1);
+      color: var(--error);
+      font-size: 8px;
+      font-weight: 700;
+      padding: 2px 4px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    /* Request Builder Form */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .form-input {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      outline: none;
+      width: 100%;
+    }
+
+    .form-input:focus {
+      border-color: var(--primary);
+    }
+
+    .json-textarea {
+      height: 120px;
+      resize: vertical;
+    }
+
+    /* Output Console Viewer */
+    .console-viewer {
+      background: #030406;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      overflow-x: auto;
+      max-height: 350px;
+      color: #9cdcfe;
+    }
+
+    .console-viewer .syntax-keyword { color: #c586c0; }
+    .console-viewer .syntax-string { color: #ce9178; }
+    .console-viewer .syntax-number { color: #b5cea8; }
+    .console-viewer .syntax-boolean { color: #569cd6; }
+    .console-viewer .syntax-key { color: #9cdcfe; }
+
+    /* Keyframe Animations */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .fallback-msg {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 48px;
+      color: var(--text-muted);
+      border: 1px dashed var(--border);
+      border-radius: 20px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Header Block -->
+    <header>
+      <div class="header-top">
+        <div class="title-area">
+          <h1>
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+            Antigravity LMS API Diagnostics Hub
+          </h1>
+          <p>Real-time endpoint auto-probes, latencies, secure schemas, and dynamic playground.</p>
+        </div>
+        <button id="btn-scan" class="btn">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          <span>Probe All Endpoints</span>
+        </button>
+      </div>
+
+      <!-- Stats shelf -->
+      <div class="stats-shelf">
+        <div class="stat-card">
+          <span class="label">Total Discovered</span>
+          <span id="stat-total" class="value">0</span>
+        </div>
+        <div class="stat-card healthy">
+          <span class="label">Healthy / Public</span>
+          <span id="stat-healthy" class="value">0</span>
+        </div>
+        <div class="stat-card protected">
+          <span class="label">Secure / Gated</span>
+          <span id="stat-protected" class="value">0</span>
+        </div>
+        <div class="stat-card warning">
+          <span class="label">Anomaly (400/404)</span>
+          <span id="stat-warning" class="value">0</span>
+        </div>
+        <div class="stat-card error">
+          <span class="label">Broken / 500</span>
+          <span id="stat-broken" class="value">0</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Controls Bar -->
+    <div class="controls">
+      <div class="search-box">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        <input type="text" id="search-input" placeholder="Search by route paths or descriptions...">
+      </div>
+      <div class="filter-tags" id="tag-filters">
+        <button class="filter-btn active" data-tag="All">All Categories</button>
+        <!-- Dynamic tags injected here -->
+      </div>
+    </div>
+
+    <!-- Active Grid -->
+    <div class="endpoints-grid" id="endpoints-grid">
+      <div class="fallback-msg">Discovering active system route maps...</div>
+    </div>
+
+  </div>
+
+  <!-- Detailed Inspector Drawer -->
+  <div class="drawer-overlay" id="drawer-overlay"></div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-header">
+      <div class="drawer-title-area">
+        <div id="drawer-tag" class="card-tag" style="align-self: flex-start;">System</div>
+        <div class="drawer-title" id="drawer-route-title">
+          <span class="method-pill get">GET</span>
+          <span class="path-text">/health</span>
+        </div>
+      </div>
+      <button class="drawer-close" id="drawer-close">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    
+    <div class="drawer-content">
+      <!-- Endpoint Details -->
+      <div class="space-y-4">
+        <h3 class="section-title">
+          <svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M14 17H4v2h10v-2zm6-8H4v2h16V9zM4 15h16v-2H4v2zM4 5v2h16V5H4z"/></svg>
+          Endpoint Summary
+        </h3>
+        <div class="detail-card" id="drawer-desc" style="font-size:13px; color: var(--text-muted); line-height: 1.6;">
+          System check endpoint
+        </div>
+      </div>
+
+      <!-- Path/Body parameters -->
+      <div class="space-y-4" id="drawer-params-section">
+        <h3 class="section-title">
+          <svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z"/></svg>
+          Expected Schemas & Parameters
+        </h3>
+        <div class="detail-card" style="padding:0; overflow-x:auto;">
+          <table class="param-table">
+            <thead>
+              <tr>
+                <th>Param</th>
+                <th>In</th>
+                <th>Type</th>
+                <th>Required</th>
+              </tr>
+            </thead>
+            <tbody id="drawer-params-body">
+              <!-- Parameter rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Quick Request Runner -->
+      <div class="space-y-4">
+        <h3 class="section-title">
+          <svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          Quick Playground Request
+        </h3>
+        <div class="detail-card flex-col gap-4">
+          <div id="drawer-request-inputs">
+            <!-- Dynamic input rows for path params / body JSON text areas -->
+          </div>
+          <button id="btn-run-request" class="btn" style="width:100%; justify-content:center; margin-top:16px;">
+            <span>Send Sandbox Request</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Diagnostics Console output -->
+      <div class="space-y-4">
+        <h3 class="section-title">
+          <svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-4H6V8h12v4z"/></svg>
+          Diagnostics Output Console
+        </h3>
+        <div class="detail-card flex flex-col gap-3">
+          <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); font-weight:700;">
+            <span id="drawer-console-status">STATUS: UNTESTED</span>
+            <span id="drawer-console-latency">LATENCY: --</span>
+          </div>
+          <pre id="console-viewer" class="console-viewer">// Console response ready...</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State management
+    let swaggerData = null;
+    let endpointList = [];
+    let healthRegistry = {};
+    let activeTag = 'All';
+    let searchQuery = '';
+    let selectedEndpoint = null;
+
+    // Dom elements
+    const grid = document.getElementById('endpoints-grid');
+    const tagFilters = document.getElementById('tag-filters');
+    const searchInput = document.getElementById('search-input');
+    const btnScan = document.getElementById('btn-scan');
+    
+    // Stats elements
+    const statTotal = document.getElementById('stat-total');
+    const statHealthy = document.getElementById('stat-healthy');
+    const statProtected = document.getElementById('stat-protected');
+    const statWarning = document.getElementById('stat-warning');
+    const statBroken = document.getElementById('stat-broken');
+
+    // Drawer elements
+    const drawerOverlay = document.getElementById('drawer-overlay');
+    const drawer = document.getElementById('drawer');
+    const drawerClose = document.getElementById('drawer-close');
+    const drawerRouteTitle = document.getElementById('drawer-route-title');
+    const drawerTag = document.getElementById('drawer-tag');
+    const drawerDesc = document.getElementById('drawer-desc');
+    const drawerParamsBody = document.getElementById('drawer-params-body');
+    const drawerParamsSection = document.getElementById('drawer-params-section');
+    const drawerRequestInputs = document.getElementById('drawer-request-inputs');
+    const btnRunRequest = document.getElementById('btn-run-request');
+    const consoleViewer = document.getElementById('console-viewer');
+    const drawerConsoleStatus = document.getElementById('drawer-console-status');
+    const drawerConsoleLatency = document.getElementById('drawer-console-latency');
+
+    // Main bootstrapping initialization
+    async function init() {
+      try {
+        const response = await fetch('/test-swagger');
+        const data = await response.json();
+        
+        swaggerData = data.swagger || {};
+        parseSwagger(swaggerData);
+        setupFilters();
+        renderEndpoints();
+        updateStats();
+
+        // Run auto-probes after initial render
+        autoProbeAll();
+      } catch (err) {
+        console.error('Failed system bootstrap:', err);
+        grid.innerHTML = `<div class="fallback-msg" style="color:var(--error); border-color:var(--error);">Failed to fetch routes registry from /test-swagger. Verify backend server is listening.</div>`;
+      }
+    }
+
+    // Parse standard swagger paths and construct endpoint objects
+    function parseSwagger(spec) {
+      endpointList = [];
+      const paths = spec.paths || {};
+      
+      for (const path in paths) {
+        for (const method in paths[path]) {
+          const detail = paths[path][method];
+          const tag = (detail.tags && detail.tags[0]) || 'System';
+          
+          const ep = {
+            id: `${method}-${path.replace(/[^a-zA-Z0-9]/g, '_')}`,
+            method: method.toUpperCase(),
+            path: path,
+            tag: tag,
+            description: detail.description || detail.summary || 'No documentation details registered.',
+            parameters: detail.parameters || [],
+            responses: detail.responses || {}
+          };
+          
+          endpointList.push(ep);
+          
+          healthRegistry[ep.id] = {
+            status: 'untested',
+            statusCode: null,
+            latency: null,
+            responseBody: null
+          };
+        }
+      }
+    }
+
+    // Set up category navigation filters
+    function setupFilters() {
+      const tags = new Set();
+      endpointList.forEach(ep => tags.add(ep.tag));
+      
+      // Clear all buttons except "All Categories"
+      tagFilters.innerHTML = `<button class="filter-btn active" data-tag="All">All Categories</button>`;
+      
+      Array.from(tags).sort().forEach(tag => {
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn';
+        btn.setAttribute('data-tag', tag);
+        btn.innerText = tag;
+        tagFilters.appendChild(btn);
+      });
+
+      // Filter click listeners
+      tagFilters.addEventListener('click', (e) => {
+        if (e.target.classList.contains('filter-btn')) {
+          document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+          e.target.classList.add('active');
+          activeTag = e.target.getAttribute('data-tag');
+          renderEndpoints();
+        }
+      });
+    }
+
+    // Main HTML rendering engine for grid cards
+    function renderEndpoints() {
+      const filtered = endpointList.filter(ep => {
+        const matchesTag = activeTag === 'All' || ep.tag === activeTag;
+        const matchesSearch = ep.path.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              ep.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              ep.method.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesTag && matchesSearch;
+      });
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="fallback-msg">No active route parameters match search filters.</div>`;
+        return;
+      }
+
+      grid.innerHTML = '';
+      
+      filtered.forEach(ep => {
+        const health = healthRegistry[ep.id];
+        
+        const card = document.createElement('div');
+        card.className = `card ${selectedEndpoint && selectedEndpoint.id === ep.id ? 'active-selected' : ''}`;
+        card.setAttribute('data-id', ep.id);
+        
+        let healthClass = 'untested';
+        let healthLabel = 'Untested';
+        
+        if (health.status === 'healthy') { healthClass = 'healthy'; healthLabel = 'Active'; }
+        else if (health.status === 'protected') { healthClass = 'protected'; healthLabel = 'Secure Gate'; }
+        else if (health.status === 'bad-request') { healthClass = 'bad-request'; healthLabel = 'Valid Schema'; }
+        else if (health.status === 'broken') { healthClass = 'broken'; healthLabel = 'Anomaly'; }
+        else if (health.status === 'testing') { healthClass = 'testing'; healthLabel = 'Probing...'; }
+
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="method-path">
+              <span class="method-pill ${ep.method.toLowerCase()}">${ep.method}</span>
+              <span class="path-text" title="${ep.path}">${ep.path}</span>
+            </div>
+            <span class="health-pill ${healthClass}">
+              <span class="health-dot"></span>
+              <span>${healthLabel} ${health.statusCode ? `(${health.statusCode})` : ''}</span>
+            </span>
+          </div>
+          <div class="card-body">
+            <p>${ep.description}</p>
+          </div>
+          <div class="card-footer">
+            <span class="card-tag">${ep.tag}</span>
+            ${health.latency !== null ? `<span class="latency-pill">${health.latency}ms</span>` : ''}
+          </div>
+        `;
+
+        card.addEventListener('click', () => openInspector(ep));
+        grid.appendChild(card);
+      });
+    }
+
+    // Perform real-time health checks on target route
+    async function probeEndpoint(ep) {
+      healthRegistry[ep.id].status = 'testing';
+      renderEndpoints();
+      updateStats();
+
+      const startTime = performance.now();
+      const options = {
+        method: ep.method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      };
+
+      // Auto substitute parameter variables for test runner
+      let testPath = ep.path;
+      ep.parameters.forEach(p => {
+        if (p.in === 'path') {
+          let fallbackVal = p.example || 'course-uuid';
+          if (p.name === 'id') fallbackVal = '6c69709e-2f53-4375-97f4-6889ac0a28b8'; // fallback valid course uuid
+          if (p.name === 'questionId') fallbackVal = 'question-uuid';
+          testPath = testPath.replace(`{${p.name}}`, fallbackVal).replace(`:${p.name}`, fallbackVal);
+        }
+      });
+
+      // Construct request body simulations for testing POST/PUT
+      if ((ep.method === 'POST' || ep.method === 'PUT') && ep.parameters.find(p => p.in === 'body')) {
+        const bodyParam = ep.parameters.find(p => p.in === 'body');
+        if (bodyParam && bodyParam.schema) {
+          const bodyObj = {};
+          const props = bodyParam.schema.properties || {};
+          for (const key in props) {
+            bodyObj[key] = props[key].example !== undefined ? props[key].example : '';
+          }
+          options.body = JSON.stringify(bodyObj);
+        }
+      }
+
+      try {
+        const response = await fetch(testPath, options);
+        const endTime = performance.now();
+        const latency = Math.round(endTime - startTime);
+
+        let dataText = '';
+        try {
+          const dataJson = await response.json();
+          dataText = JSON.stringify(dataJson, null, 2);
+        } catch {
+          dataText = await response.text();
+        }
+
+        let status = 'healthy';
+        
+        if (response.status === 401 || response.status === 403) {
+          status = 'protected'; // Gated active
+        } else if (response.status === 400) {
+          status = 'bad-request'; // Active schema validate working
+        } else if (response.status >= 500 || response.status === 404) {
+          status = 'broken';
+        }
+
+        healthRegistry[ep.id] = {
+          status,
+          statusCode: response.status,
+          latency: latency,
+          responseBody: dataText
+        };
+      } catch (err) {
+        const endTime = performance.now();
+        healthRegistry[ep.id] = {
+          status: 'broken',
+          statusCode: null,
+          latency: Math.round(endTime - startTime),
+          responseBody: `TCP Network Socket Closed: ${err.message || 'Verification timed out.'}`
+        };
+      }
+
+      renderEndpoints();
+      updateStats();
+
+      // If active inspector matches this probed endpoint, refresh the inspect pane
+      if (selectedEndpoint && selectedEndpoint.id === ep.id) {
+        refreshInspectorConsole(ep);
+      }
+    }
+
+    // Run parallel automated probes
+    async function autoProbeAll() {
+      btnScan.disabled = true;
+      btnScan.querySelector('span').innerText = 'Scanning Handshakes...';
+      
+      const pings = endpointList.map(ep => probeEndpoint(ep));
+      await Promise.all(pings);
+      
+      btnScan.disabled = false;
+      btnScan.querySelector('span').innerText = 'Re-scan All Endpoints';
+    }
+
+    // Refresh KPI counts
+    function updateStats() {
+      let healthy = 0;
+      let protect = 0;
+      let warning = 0;
+      let broken = 0;
+      
+      Object.values(healthRegistry).forEach(h => {
+        if (h.status === 'healthy') healthy++;
+        else if (h.status === 'protected') protect++;
+        else if (h.status === 'bad-request') warning++;
+        else if (h.status === 'broken') broken++;
+      });
+
+      statTotal.innerText = endpointList.length;
+      statHealthy.innerText = healthy;
+      statProtected.innerText = protect;
+      statWarning.innerText = warning;
+      statBroken.innerText = broken;
+    }
+
+    // Colorized JSON syntax highlighting
+    function syntaxHighlight(json) {
+      if (typeof json !== 'string') {
+        json = JSON.stringify(json, undefined, 2);
+      }
+      
+      // Escape HTML entities to prevent DOM XSS vulnerabilities
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      
+      return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, function (match) {
+        let cls = 'syntax-number';
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'syntax-key';
+          } else {
+            cls = 'syntax-string';
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'syntax-boolean';
+        } else if (/null/.test(match)) {
+          cls = 'syntax-keyword';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+      });
+    }
+
+    // Open detailed drawer
+    function openInspector(ep) {
+      selectedEndpoint = ep;
+      
+      // Update visual border selection
+      document.querySelectorAll('.card').forEach(c => {
+        c.classList.remove('active-selected');
+        if (c.getAttribute('data-id') === ep.id) {
+          c.classList.add('active-selected');
+        }
+      });
+
+      drawerTag.innerText = ep.tag;
+      drawerRouteTitle.innerHTML = `
+        <span class="method-pill ${ep.method.toLowerCase()}">${ep.method}</span>
+        <span class="path-text">${ep.path}</span>
+      `;
+      drawerDesc.innerText = ep.description;
+
+      // Render schemas
+      if (ep.parameters.length === 0) {
+        drawerParamsSection.style.display = 'none';
+      } else {
+        drawerParamsSection.style.display = 'block';
+        drawerParamsBody.innerHTML = '';
+        
+        ep.parameters.forEach(p => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="param-name">${p.name}</td>
+            <td><span class="card-tag" style="font-size:9px;">${p.in}</span></td>
+            <td class="param-type">${p.type || (p.schema && p.schema.type) || 'string'}</td>
+            <td>${p.required ? '<span class="required-badge">required</span>' : '<span style="color:var(--text-muted);">optional</span>'}</td>
+          `;
+          drawerParamsBody.appendChild(row);
+        });
+      }
+
+      // Set up interactive playground form inputs
+      drawerRequestInputs.innerHTML = '';
+      
+      // 1. Inputs for path/query parameters
+      const pathQueryParams = ep.parameters.filter(p => p.in === 'path' || p.in === 'query');
+      if (pathQueryParams.length > 0) {
+        const title = document.createElement('h4');
+        title.className = 'section-title';
+        title.style.marginTop = '10px';
+        title.innerText = 'Parameters';
+        drawerRequestInputs.appendChild(title);
+        
+        pathQueryParams.forEach(p => {
+          const fg = document.createElement('div');
+          fg.className = 'form-group';
+          let defaultVal = p.example || '';
+          if (p.name === 'id') defaultVal = '6c69709e-2f53-4375-97f4-6889ac0a28b8';
+          
+          fg.innerHTML = `
+            <label>${p.name} (${p.in}) ${p.required ? '*' : ''}</label>
+            <input type="text" class="form-input test-param-input" data-name="${p.name}" data-in="${p.in}" value="${defaultVal}">
+          `;
+          drawerRequestInputs.appendChild(fg);
+        });
+      }
+
+      // 2. Request body JSON textarea
+      const bodyParam = ep.parameters.find(p => p.in === 'body');
+      if (bodyParam) {
+        const title = document.createElement('h4');
+        title.className = 'section-title';
+        title.style.marginTop = '10px';
+        title.innerText = 'JSON Request Body';
+        drawerRequestInputs.appendChild(title);
+
+        const fg = document.createElement('div');
+        fg.className = 'form-group';
+        
+        const defaultObj = {};
+        const props = (bodyParam.schema && bodyParam.schema.properties) || {};
+        for (const k in props) {
+          defaultObj[k] = props[k].example !== undefined ? props[k].example : '';
+        }
+        
+        fg.innerHTML = `
+          <textarea class="form-input json-textarea" id="playground-body-json" placeholder="Enter JSON request body payload...">${JSON.stringify(defaultObj, null, 2)}</textarea>
+        `;
+        drawerRequestInputs.appendChild(fg);
+      }
+
+      // Bind Send button
+      btnRunRequest.onclick = () => runPlaygroundRequest(ep);
+
+      refreshInspectorConsole(ep);
+
+      // Slide in open animation
+      drawerOverlay.classList.add('open');
+      drawer.classList.add('open');
+    }
+
+    // Refresh response viewer state inside drawer
+    function refreshInspectorConsole(ep) {
+      const health = healthRegistry[ep.id];
+      drawerConsoleStatus.innerText = `STATUS: ${health.statusCode ? `${health.statusCode} ${health.status.toUpperCase()}` : 'UNTESTED'}`;
+      drawerConsoleLatency.innerText = `LATENCY: ${health.latency !== null ? `${health.latency}ms` : '--'}`;
+      
+      if (health.responseBody) {
+        if (health.responseBody.startsWith('{') || health.responseBody.startsWith('[')) {
+          consoleViewer.innerHTML = syntaxHighlight(health.responseBody);
+        } else {
+          consoleViewer.innerText = health.responseBody;
+        }
+      } else {
+        consoleViewer.innerText = '// Console response ready... Press "Send Sandbox Request"';
+      }
+    }
+
+    // Execute sandbox playground query
+    async function runPlaygroundRequest(ep) {
+      btnRunRequest.disabled = true;
+      btnRunRequest.querySelector('span').innerText = 'Request Dispatched...';
+      consoleViewer.innerText = '// Waiting for server response...';
+      
+      const start = performance.now();
+      
+      // Gather param overrides
+      let finalPath = ep.path;
+      const queryParams = {};
+      
+      document.querySelectorAll('.test-param-input').forEach(input => {
+        const name = input.getAttribute('data-name');
+        const loc = input.getAttribute('data-in');
+        const val = input.value;
+        
+        if (loc === 'path') {
+          finalPath = finalPath.replace(`{${name}}`, val).replace(`:${name}`, val);
+        } else if (loc === 'query' && val) {
+          queryParams[name] = val;
+        }
+      });
+
+      // Append query parameters
+      const qKeys = Object.keys(queryParams);
+      if (qKeys.length > 0) {
+        const qStr = qKeys.map(k => `${encodeURIComponent(k)}=${encodeURIComponent(queryParams[k])}`).join('&');
+        finalPath += `?${qStr}`;
+      }
+
+      const options = {
+        method: ep.method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      };
+
+      // Gather body override
+      const bodyTextarea = document.getElementById('playground-body-json');
+      if (bodyTextarea) {
+        options.body = bodyTextarea.value;
+      }
+
+      try {
+        const response = await fetch(finalPath, options);
+        const end = performance.now();
+        const latency = Math.round(end - start);
+
+        let bodyText = '';
+        try {
+          const bodyJson = await response.json();
+          bodyText = JSON.stringify(bodyJson, null, 2);
+        } catch {
+          bodyText = await response.text();
+        }
+
+        drawerConsoleStatus.innerText = `STATUS: ${response.status} ${response.statusText}`;
+        drawerConsoleLatency.innerText = `LATENCY: ${latency}ms`;
+        
+        if (bodyText.startsWith('{') || bodyText.startsWith('[')) {
+          consoleViewer.innerHTML = syntaxHighlight(bodyText);
+        } else {
+          consoleViewer.innerText = bodyText;
+        }
+
+        // Update main grid registry values
+        let status = 'healthy';
+        if (response.status === 401 || response.status === 403) status = 'protected';
+        else if (response.status === 400) status = 'bad-request';
+        else if (response.status >= 500 || response.status === 404) status = 'broken';
+
+        healthRegistry[ep.id] = {
+          status,
+          statusCode: response.status,
+          latency: latency,
+          responseBody: bodyText
+        };
+        renderEndpoints();
+        updateStats();
+      } catch (err) {
+        const end = performance.now();
+        drawerConsoleStatus.innerText = `STATUS: TCP FAIL`;
+        drawerConsoleLatency.innerText = `LATENCY: ${Math.round(end - start)}ms`;
+        consoleViewer.innerText = `Error: ${err.message || 'Failed to dispatch fetch command. Cross-origin request blocked or listener closed.'}`;
+      }
+
+      btnRunRequest.disabled = false;
+      btnRunRequest.querySelector('span').innerText = 'Send Sandbox Request';
+    }
+
+    // Close drawer
+    function closeInspector() {
+      selectedEndpoint = null;
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('active-selected'));
+      drawerOverlay.classList.remove('open');
+      drawer.classList.remove('open');
+    }
+
+    // Bind listeners
+    drawerClose.addEventListener('click', closeInspector);
+    drawerOverlay.addEventListener('click', closeInspector);
+    btnScan.addEventListener('click', autoProbeAll);
+    
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      renderEndpoints();
+    });
+
+    // Run setup
+    init();
+  </script>
+</body>
+</html>

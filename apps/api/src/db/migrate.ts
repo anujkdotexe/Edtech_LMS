@@ -11,7 +11,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/lms_gamified';
 
 async function main() {
-  console.log('⏳ Running database migrations programmatically...');
+  console.log('[INFO] Running database migrations programmatically...');
   
   const client = new pg.Client({
     connectionString,
@@ -26,9 +26,9 @@ async function main() {
       migrationsFolder: path.resolve(__dirname, 'migrations'),
     });
 
-    console.log('✅ Migrations completed successfully!');
+    console.log('[OK] Migrations completed successfully!');
   } catch (error) {
-    console.error('❌ Error executing migrations:', error);
+    console.error('[ERROR] Error executing migrations:', error);
     process.exit(1);
   } finally {
     await client.end();

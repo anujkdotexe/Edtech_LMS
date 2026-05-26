@@ -57,7 +57,7 @@ export const signupHandler = async (request: FastifyRequest, reply: FastifyReply
 
     reply.status(201).send({ success: true, message: 'User registered successfully' });
   } catch (error) {
-    console.error('❌ Error during signup:', error);
+    console.error('[ERROR] Error during signup:', error);
     reply.status(500).send({ error: 'Internal Server Error', message: 'Something went wrong during registration' });
   }
 };
@@ -82,6 +82,12 @@ export const loginHandler = async (request: FastifyRequest, reply: FastifyReply)
     }
 
     const user = users[0];
+
+    // Check if account is suspended
+    if (user.isSuspended) {
+      reply.status(403).send({ error: 'Forbidden', message: 'Your account has been suspended. Please contact support.' });
+      return;
+    }
 
     // Check credentials match
     const passwordMatches = await bcrypt.compare(password, user.passwordHash);
@@ -120,7 +126,7 @@ export const loginHandler = async (request: FastifyRequest, reply: FastifyReply)
       forcePasswordReset: user.forcePasswordReset,
     });
   } catch (error) {
-    console.error('❌ Error during login:', error);
+    console.error('[ERROR] Error during login:', error);
     reply.status(500).send({ error: 'Internal Server Error', message: 'Something went wrong during login' });
   }
 };
@@ -207,3 +213,89 @@ export const resetPasswordHandler = async (request: FastifyRequest, reply: Fasti
     reply.status(400).send({ error: 'Bad Request', message: 'Invalid or expired token' });
   }
 };
+
+// 7. GOOGLE OAUTH HANDLER (WITH ACCOUNT MERGING)
+export const googleOAuthHandler = async (request: FastifyRequest, reply: FastifyReply) => {
+  const { email, name, avatarUrl } = request.body as { email: string; name: string; avatarUrl?: string };
+
+  try {
+    // Check if user already exists
+    let users = await db.select().from(schema.users).where(eq(schema.users.email, email)).limit(1);
+    let user;
+
+    if (users.length > 0) {
+      // 1. Account Merging: Link Google login dynamically to the existing profile
+      user = users[0];
+      
+      // Update avatarUrl if the existing profile had none
+      if (!user.avatarUrl && avatarUrl) {
+        await db.update(schema.users).set({ avatarUrl }).where(eq(schema.users.id, user.id));
+        user.avatarUrl = avatarUrl;
+      }
+    } else {
+      // 2. First-time registration: Create student account inside transaction
+      const defaultAvatar = avatarUrl || 'https://api.dicebear.com/7.x/pixel-art/svg?seed=' + encodeURIComponent(name);
+      
+      user = await db.transaction(async (tx) => {
+        const [newUser] = await tx.insert(schema.users).values({
+          name,
+          email,
+          passwordHash: await bcrypt.hash(Math.random().toString(36).substring(2, 10) + 'GoOgLe!', 10), // secure random placeholder
+          role: 'STUDENT',
+          avatarUrl: defaultAvatar,
+        }).returning();
+
+        // Initialize default user XP (0 XP, Level 1)
+        await tx.insert(schema.userXp).values({
+          userId: newUser.id,
+          totalXp: 0,
+          level: 1,
+        });
+
+        // Initialize default streak (0 streak)
+        await tx.insert(schema.userStreaks).values({
+          userId: newUser.id,
+          currentStreak: 0,
+          longestStreak: 0,
+        });
+
+        return newUser;
+      });
+    }
+
+    // Check if account is suspended
+    if (user.isSuspended) {
+      reply.status(403).send({ error: 'Forbidden', message: 'Your account has been suspended. Please contact support.' });
+      return;
+    }
+
+    // Mint token payloads
+    const payload = {
+      userId: user.id,
+      role: user.role,
+    };
+
+    const isProduction = serverEnv.NODE_ENV === 'production';
+
+    // Generate cookies
+    const token = jwt.sign(payload, serverEnv.JWT_SECRET, { expiresIn: '15m' });
+    const refreshToken = jwt.sign({ userId: user.id }, serverEnv.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+
+    reply.setCookie('token', token, getCookieOptions(isProduction, 900));
+    reply.setCookie('refreshToken', refreshToken, getCookieOptions(isProduction, 604800));
+    reply.clearCookie('impersonationToken', { path: '/' });
+
+    reply.status(200).send({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatarUrl: user.avatarUrl,
+      forcePasswordReset: user.forcePasswordReset,
+    });
+  } catch (error) {
+    console.error('[ERROR] Error during Google OAuth:', error);
+    reply.status(500).send({ error: 'Internal Server Error', message: 'Something went wrong during Google OAuth' });
+  }
+};
+
