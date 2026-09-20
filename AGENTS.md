@@ -50,35 +50,24 @@ apps/api/src/
 │   ├── migrations/             # Auto-generated migration SQL files
 │   ├── seed.ts                 # Dev data seeder
 │   └── migrate.ts              # Migration runner
-└── modules/                    # Business logic by domain
-    ├── auth/
-    │   ├── auth.handlers.ts    # signup, login, logout, refresh, forgotPw, resetPw, googleOAuth
-    │   └── auth.middleware.ts  # verifyJWT, checkRole
-    ├── courses/
-    │   └── courses.handlers.ts # getAll, getById (syllabus), purchase, create, update, delete
-    ├── quizzes/
-    │   └── quizzes.handlers.ts # getAll, getQuestions, submitAnswers (XP+streak+badge tx)
-    ├── profile/
-    │   └── profile.handlers.ts # getProfile (stats+badges+history), updateProfile
-    ├── leaderboard/
-    │   └── leaderboard.handlers.ts # getLeaderboard
-    └── admin/
-        ├── admin.handlers.ts   # importStudents (CSV bulk import)
-        ├── students.handlers.ts# CRM: get, suspend, resetPw, delete, enroll, export, message
-        ├── payments.handlers.ts# getPayments, issueRefund, exportCSV
-        ├── content.handlers.ts # module/lesson CRUD, file upload, lesson reorder
-        ├── quiz.handlers.ts    # quiz/question CRUD
-        ├── analytics.handlers.ts # dashboard analytics, course dropoff analytics
-        └── settings.handlers.ts# getSiteSettings, updateSiteSettings (site_config table)
-    └── dev/
-        └── dev.handlers.ts     # impersonate, unimpersonate, auditLogs, health,
-                                #   override (XP/streak/revoke), advancedLogs,
-                                #   featureFlags, cache, reconciliation, queueMonitor
+└── modules/                    # Business logic by domain (Clean MVC)
+    ├── auth/                   # auth.controller, auth.service, auth.repository, auth.routes, auth.types, auth.middleware
+    ├── courses/                # courses.controller, courses.service, courses.repository, courses.routes, courses.types
+    ├── quizzes/                # quizzes.controller, quizzes.service, quizzes.repository, quizzes.routes, quizzes.types
+    ├── profile/                # profile.controller, profile.service, profile.repository, profile.routes, profile.types
+    ├── leaderboard/            # leaderboard.controller, leaderboard.service, leaderboard.repository, leaderboard.routes, leaderboard.types
+    ├── dev/                    # dev.controller, dev.service, dev.repository, dev.routes, dev.types
+    └── admin/                  # admin.controller, admin.service, admin.repository, admin.routes, admin.types
 ```
 
-### Current Module Architecture (Flat — being refactored)
+### Module Architecture (Clean MVC — 100% Completed)
 
-All handlers are currently flat functions exported from `*.handlers.ts` files. The refactor target is **MVC within each module** (see Architecture section below).
+All domain modules follow strict internal MVC separation:
+- **Controller** (`*.controller.ts`) — handles HTTP: extracts parameters/body, calls service, sends reply.
+- **Service** (`*.service.ts`) — pure business logic: validates invariants, coordinates repositories, manages transactions.
+- **Repository** (`*.repository.ts`) — isolated Drizzle ORM database access layer.
+- **Routes** (`*.routes.ts`) — exports Fastify route plugin with Fastify schemas and auth preHandlers.
+- **Types** (`*.types.ts`) — module-specific DTOs and parameter contracts.
 
 ### Route Registration Convention
 

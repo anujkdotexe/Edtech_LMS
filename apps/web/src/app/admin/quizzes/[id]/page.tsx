@@ -56,7 +56,7 @@ export default function AdminQuizQuestions({ params }: { params?: { id?: string 
     if (!id || id === 'undefined') return;
     setLoading(true);
     try {
-      const data = await apiFetch<QuizDetails>(`/api/quizzes/${id}`);
+      const data = await apiFetch<QuizDetails>(`/api/admin/quizzes/${id}`);
       setQuiz(data);
     } catch (err: any) {
       alert(err.message || 'Error loading quiz details');

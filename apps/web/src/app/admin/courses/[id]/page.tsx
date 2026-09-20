@@ -6,7 +6,8 @@ import { useAuthStore } from '../../../../store/useAuthStore';
 import { apiFetch } from '../../../../lib/api';
 import Link from 'next/link';
 import { 
-  ArrowLeft, Plus, Pencil, Trash2, GripVertical, FileText, Upload, Save, X, Eye, EyeOff 
+  ArrowLeft, Plus, Pencil, Trash2, GripVertical, FileText, Upload, Save, X, Eye, EyeOff,
+  ChevronUp, ChevronDown 
 } from 'lucide-react';
 
 interface Lesson {
@@ -167,6 +168,36 @@ export default function AdminCourseEditor({ params }: { params?: { id?: string }
     }
   };
 
+  const handleMoveLesson = async (moduleId: string, lessonIndex: number, direction: 'UP' | 'DOWN') => {
+    if (!course) return;
+    const targetModule = course.modules.find((m) => m.id === moduleId);
+    if (!targetModule) return;
+
+    const targetIndex = direction === 'UP' ? lessonIndex - 1 : lessonIndex + 1;
+    if (targetIndex < 0 || targetIndex >= targetModule.lessons.length) return;
+
+    const reorderedLessons = [...targetModule.lessons];
+    const [moved] = reorderedLessons.splice(lessonIndex, 1);
+    reorderedLessons.splice(targetIndex, 0, moved);
+
+    const orderedLessonIds = reorderedLessons.map((l) => l.id);
+
+    setCourse({
+      ...course,
+      modules: course.modules.map((m) => (m.id === moduleId ? { ...m, lessons: reorderedLessons } : m)),
+    });
+
+    try {
+      await apiFetch(`/api/admin/modules/${moduleId}/lessons/reorder`, {
+        method: 'PUT',
+        body: JSON.stringify({ orderedLessonIds }),
+      });
+    } catch (err: any) {
+      alert(err.message || 'Failed to reorder lessons');
+      loadCourse(course.id);
+    }
+  };
+
   if (!isAuthenticated || !['ADMIN', 'DEVELOPER'].includes(user?.role || '')) {
     return <div className="p-8 text-center text-red-500 font-bold">Unauthorized</div>;
   }
@@ -261,10 +292,30 @@ export default function AdminCourseEditor({ params }: { params?: { id?: string }
                 {module.lessons.length === 0 ? (
                   <p className="text-xs text-slate-400 text-center py-4">No lessons in this module.</p>
                 ) : (
-                  module.lessons.map((lesson) => (
+                  module.lessons.map((lesson, idx) => (
                     <div key={lesson.id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl border border-transparent hover:border-slate-100 transition group">
                       <div className="flex items-center gap-3">
-                        <FileText className="w-4 h-4 text-slate-400" />
+                        <div className="flex flex-col gap-0.5 opacity-60 group-hover:opacity-100 transition">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveLesson(module.id, idx, 'UP')}
+                            disabled={idx === 0}
+                            title="Move Up"
+                            className="p-0.5 hover:text-primary text-slate-400 disabled:opacity-20 transition"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveLesson(module.id, idx, 'DOWN')}
+                            disabled={idx === module.lessons.length - 1}
+                            title="Move Down"
+                            className="p-0.5 hover:text-primary text-slate-400 disabled:opacity-20 transition"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <FileText className="w-4 h-4 text-slate-400 shrink-0" />
                         <div>
                           <p className="text-sm font-semibold text-slate-700">{lesson.title}</p>
                           {lesson.filePath && (

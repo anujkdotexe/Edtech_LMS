@@ -177,14 +177,16 @@ export class AdminController {
   static async importStudents(request: FastifyRequest, reply: FastifyReply) {
     try {
       let studentsList: Array<{ name: string; email: string }> = [];
-      if (request.body && typeof request.body === 'object' && 'students' in (request.body as any)) {
+      if (request.body && typeof request.body === 'object' && Array.isArray((request.body as any).students)) {
         studentsList = (request.body as { students: Array<{ name: string; email: string }> }).students;
-      } else {
-        studentsList = [
-          { name: 'Bulk Student A', email: 'bulk.a@lms.local' },
-          { name: 'Bulk Student B', email: 'bulk.b@lms.local' },
-          { name: 'Bulk Student C', email: 'bulk.c@lms.local' },
-        ];
+      }
+
+      if (!studentsList || studentsList.length === 0) {
+        return reply.status(400).send({
+          statusCode: 400,
+          error: 'Validation Error',
+          message: 'No student records provided in payload',
+        });
       }
 
       const { importedCount } = await AdminService.importStudents(
@@ -394,6 +396,20 @@ export class AdminController {
   }
 
   // ─── Quizzes ──────────────────────────────────────────────────────────────
+  static async getQuizDetails(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    try {
+      const locale = (request.headers['accept-language'] || 'en').split(',')[0].trim().substring(0, 2);
+      const quiz = await AdminService.getQuizDetails(request.params.id, locale);
+      reply.status(200).send(quiz);
+    } catch (error: any) {
+      if (error?.name === 'NotFoundError' || error?.statusCode === 404) {
+        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: error.message || 'Quiz not found' });
+      }
+      request.log.error(error);
+      reply.status(500).send({ error: 'Internal Server Error' });
+    }
+  }
+
   static async createQuiz(request: FastifyRequest<{ Body: CreateQuizDto }>, reply: FastifyReply) {
     try {
       const newQuiz = await AdminService.createQuiz(request.body);

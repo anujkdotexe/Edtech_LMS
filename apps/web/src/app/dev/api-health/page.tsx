@@ -65,11 +65,11 @@ export default function ApiHealthPage() {
     {
       id: 'course-get-by-id',
       method: 'GET',
-      path: '/api/courses/6c69709e-2f53-4375-97f4-6889ac0a28b8',
+      path: '/api/courses/:id',
       category: 'Courses',
       access: 'Public',
       description: 'Fetches detailed modules, lesson structures, and file path parameters for a single course.',
-      testPath: '/api/courses/6c69709e-2f53-4375-97f4-6889ac0a28b8'
+      testPath: '/api/courses'
     },
     {
       id: 'quizzes-get',

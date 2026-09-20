@@ -9,7 +9,8 @@ import { ImpersonationBanner } from './ImpersonationBanner';
 import { AdminDevTopBar } from './AdminDevTopBar';
 import { AdminSidebar } from './AdminSidebar';
 import { DevSidebar } from './DevSidebar';
-import { Home, BookOpen, Trophy } from 'lucide-react';
+import { Home, BookOpen, Trophy, Sparkles, Bell } from 'lucide-react';
+import { apiFetch } from '../../lib/api';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -20,6 +21,17 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, fetchProfile, checkSession } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [banner, setBanner] = useState<{ activeBanner: string; bannerEnabled: boolean } | null>(null);
+
+  useEffect(() => {
+    apiFetch<{ activeBanner?: string; bannerEnabled?: boolean }>('/api/public/settings')
+      .then((res) => {
+        if (res && res.activeBanner && res.bannerEnabled) {
+          setBanner({ activeBanner: res.activeBanner, bannerEnabled: true });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const isPublicRoute = pathname === '/login' || pathname.startsWith('/reset-password');
@@ -105,11 +117,20 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const studentNavLinks = [
     { name: 'Dashboard', path: '/', icon: <Home className="w-4 h-4" /> },
     { name: 'Courses', path: '/courses', icon: <BookOpen className="w-4 h-4" /> },
+    { name: 'Quizzes', path: '/quizzes', icon: <Sparkles className="w-4 h-4" /> },
     { name: 'Leaderboard', path: '/leaderboard', icon: <Trophy className="w-4 h-4" /> },
   ];
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+      {/* Global Announcement Banner */}
+      {banner?.bannerEnabled && banner.activeBanner && (
+        <aside aria-label="Site announcement" className="bg-gradient-to-r from-primary to-indigo-600 text-white text-xs font-semibold py-2 px-4 text-center flex items-center justify-center gap-2 shadow-sm">
+          <Bell className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+          <span>{banner.activeBanner}</span>
+        </aside>
+      )}
+
       {/* Impersonation Warning Banner */}
       <ImpersonationBanner />
 

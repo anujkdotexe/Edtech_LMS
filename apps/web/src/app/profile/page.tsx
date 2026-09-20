@@ -8,6 +8,7 @@ import {
   Lock, KeyRound, ShieldCheck, Trophy, Activity, ShoppingCart, 
   BrainCircuit, Calendar, FileText
 } from 'lucide-react';
+import { BadgeGrid } from '../../components/gamification/BadgeGrid';
 
 const AVATAR_SEEDS = [
   { id: 'felix', name: 'Felix' },
@@ -116,6 +117,7 @@ export default function ProfilePage() {
       await apiFetch('/api/profile', {
         method: 'PUT',
         body: JSON.stringify({
+          currentPassword,
           password: newPassword,
         }),
       });
@@ -202,7 +204,7 @@ export default function ProfilePage() {
                 ></div>
               </div>
               <p className="text-[10px] text-slate-400 text-left font-medium">
-                Collect another {250 - (user.stats?.totalXp % 250)} XP by passing grammar quizzes to level up!
+                Collect another {250 - ((user.stats?.totalXp || 0) % 250)} XP by passing grammar quizzes to level up!
               </p>
             </div>
           </div>
@@ -211,87 +213,10 @@ export default function ProfilePage() {
           <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-premium space-y-4">
             <h3 className="font-display font-extrabold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-50 pb-3">
               <Trophy className="w-4.5 h-4.5 text-primary" />
-              Achievements Showcase (7 Badges)
+              Achievements Showcase
             </h3>
             
-            <div className="grid grid-cols-1 gap-3">
-              {[
-                {
-                  id: 'scholar_1',
-                  name: 'Scholar Level 1',
-                  description: 'Complete your first lesson module',
-                  isUnlocked: (user?.stats?.totalXp || 0) >= 20 || user.role === 'ADMIN' || user.role === 'DEVELOPER',
-                },
-                {
-                  id: 'centurion_streak',
-                  name: 'Centurion Streak',
-                  description: 'Maintain a 5-day active streak flame',
-                  isUnlocked: (user?.stats?.currentStreak || 0) >= 5 || user.role === 'ADMIN' || user.role === 'DEVELOPER',
-                },
-                {
-                  id: 'quiz_conqueror',
-                  name: 'Quiz Conqueror',
-                  description: 'Achieve a perfect score on any MCQ quiz',
-                  isUnlocked: (user?.stats?.totalXp || 0) >= 100 || user.role === 'ADMIN' || user.role === 'DEVELOPER',
-                },
-                {
-                  id: 'cefr_pioneer',
-                  name: 'CEFR Pioneer',
-                  description: 'Unlock any CEFR vocabulary or syntax course catalog',
-                  isUnlocked: (user?.stats?.totalXp || 0) >= 50 || user.role === 'ADMIN' || user.role === 'DEVELOPER',
-                },
-                {
-                  id: 'xp_overlord',
-                  name: 'XP Overlord',
-                  description: 'Amass 500 total XP points across modules',
-                  isUnlocked: (user?.stats?.totalXp || 0) >= 500 || user.role === 'ADMIN' || user.role === 'DEVELOPER',
-                },
-                {
-                  id: 'vocab_master',
-                  name: 'Vocabulary Master',
-                  description: 'Clear the 30-sec daily vocabulary warmup challenge',
-                  isUnlocked: typeof window !== 'undefined' && !!localStorage.getItem(`warmup_${new Date().toDateString()}_${user?.id}`),
-                },
-                {
-                  id: 'platform_veteran',
-                  name: 'Platform Veteran',
-                  description: 'Stay active for 7 consecutive days',
-                  isUnlocked: (user?.stats?.currentStreak || 0) >= 7 || (user?.stats?.totalXp || 0) >= 300 || user.role === 'ADMIN' || user.role === 'DEVELOPER',
-                }
-              ].map((badge) => (
-                <div 
-                  key={badge.id} 
-                  className={`flex items-start gap-3 border p-3 rounded-2xl transition duration-200 ${
-                    badge.isUnlocked 
-                      ? 'bg-slate-50 border-slate-100 hover:border-slate-200' 
-                      : 'bg-slate-50/30 border-slate-100/50 opacity-55'
-                  }`}
-                >
-                  <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 shadow-sm ${
-                    badge.isUnlocked
-                      ? 'bg-amber-50 border-amber-200 text-amber-500'
-                      : 'bg-slate-100 border-slate-200 text-slate-400'
-                  }`}>
-                    {badge.isUnlocked ? (
-                      <Award className="w-5 h-5 fill-amber-50/50" />
-                    ) : (
-                      <Lock className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800 leading-tight flex items-center gap-1.5">
-                      <span>{badge.name}</span>
-                      {badge.isUnlocked ? (
-                        <span className="text-[8px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100 uppercase tracking-wide">Unlocked</span>
-                      ) : (
-                        <span className="text-[8px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 uppercase tracking-wide">Locked</span>
-                      )}
-                    </p>
-                    <p className="text-[10px] text-slate-400 leading-relaxed mt-0.5">{badge.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <BadgeGrid unlockedBadges={user.badges || []} />
           </div>
 
           {/* Activity Feed */}
@@ -372,7 +297,7 @@ export default function ProfilePage() {
                         key={seed.id}
                         type="button"
                         onClick={() => setSelectedAvatar(seed.id)}
-                        className={`w-14 h-14 rounded-xl border-2 overflow-hidden flex items-center justify-center p-0.5 bg-slate-50 hover:bg-slate-100 hover:border-slate-350 transition relative ${
+                        className={`w-14 h-14 rounded-xl border-2 overflow-hidden flex items-center justify-center p-0.5 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 transition relative ${
                           isSelected ? 'border-primary ring-2 ring-primary/20 scale-105 shadow-sm' : 'border-slate-100'
                         }`}
                         title={seed.name}

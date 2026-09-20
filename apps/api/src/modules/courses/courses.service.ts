@@ -296,4 +296,110 @@ export class CoursesService {
         orderStatus === 'SUCCESS' ? 'Course successfully unlocked' : 'Simulated payment failed',
     };
   }
+
+  static async createCourse(
+    data: {
+      cefrLevel: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+      price: number;
+      isPremium: boolean;
+      title: string;
+      description: string;
+      locale: string;
+    },
+    user: { userId: string; impersonatedBy?: string },
+    ip?: string
+  ) {
+    const newCourse = await CoursesRepository.createCourseWithTranslation({
+      cefrLevel: data.cefrLevel || 'A1',
+      price: String(data.price || 0.0),
+      isPremium: !!data.isPremium,
+      isPublished: true,
+      locale: data.locale,
+      title: data.title,
+      description: data.description,
+    });
+
+    await db.insert(schema.auditLogs).values({
+      userId: user.userId,
+      impersonatedBy: user.impersonatedBy,
+      action: 'COURSE_CREATE',
+      details: `Created new course "${data.title}" (${data.cefrLevel}) with price $${data.price}`,
+      ipAddress: ip,
+    });
+
+    return {
+      id: newCourse.id,
+      cefrLevel: newCourse.cefrLevel,
+      price: Number(newCourse.price),
+      isPremium: newCourse.isPremium,
+      title: data.title,
+      description: data.description,
+    };
+  }
+
+  static async updateCourse(
+    id: string,
+    data: {
+      cefrLevel?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+      price?: number;
+      isPremium?: boolean;
+      isPublished?: boolean;
+      title?: string;
+      description?: string;
+      locale: string;
+    },
+    user: { userId: string; impersonatedBy?: string },
+    ip?: string
+  ) {
+    const courseUpdates: any = { updatedAt: new Date() };
+    if (data.cefrLevel !== undefined) courseUpdates.cefrLevel = data.cefrLevel;
+    if (data.price !== undefined) courseUpdates.price = String(data.price);
+    if (data.isPremium !== undefined) courseUpdates.isPremium = data.isPremium;
+    if (data.isPublished !== undefined) courseUpdates.isPublished = data.isPublished;
+
+    const translationData = (data.title !== undefined || data.description !== undefined)
+      ? { locale: data.locale, title: data.title, description: data.description }
+      : undefined;
+
+    const updatedCourse = await CoursesRepository.updateCourseWithTranslation(
+      id,
+      courseUpdates,
+      translationData
+    );
+
+    if (!updatedCourse) {
+      throw new NotFoundError('Course not found');
+    }
+
+    await db.insert(schema.auditLogs).values({
+      userId: user.userId,
+      impersonatedBy: user.impersonatedBy,
+      action: 'COURSE_UPDATE',
+      details: `Updated course ID ${id} details`,
+      ipAddress: ip,
+    });
+
+    return updatedCourse;
+  }
+
+  static async deleteCourse(
+    id: string,
+    user: { userId: string; impersonatedBy?: string },
+    ip?: string
+  ) {
+    const deletedCourse = await CoursesRepository.deleteCourse(id);
+    if (!deletedCourse) {
+      throw new NotFoundError('Course not found');
+    }
+
+    await db.insert(schema.auditLogs).values({
+      userId: user.userId,
+      impersonatedBy: user.impersonatedBy,
+      action: 'COURSE_DELETE',
+      details: `Deleted course ID ${id}`,
+      ipAddress: ip,
+    });
+
+    return deletedCourse;
+  }
 }

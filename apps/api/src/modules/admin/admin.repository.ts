@@ -529,6 +529,41 @@ export class AdminRepository {
   }
 
   // ─── Quizzes & Questions ──────────────────────────────────────────────────
+  static async getQuizWithQuestions(quizId: string, requestedLocale = 'en') {
+    const quizRows = await db.select().from(schema.quizzes).where(eq(schema.quizzes.id, quizId)).limit(1);
+    if (quizRows.length === 0) return null;
+    const quiz = quizRows[0];
+
+    const qTranslations = await db.select().from(schema.quizTranslations).where(eq(schema.quizTranslations.quizId, quizId));
+    const trans =
+      qTranslations.find((t) => t.locale === requestedLocale) ||
+      qTranslations.find((t) => t.locale === 'en') ||
+      qTranslations[0];
+
+    const questions = await db.select().from(schema.quizQuestions).where(eq(schema.quizQuestions.quizId, quizId));
+    const sortedQuestions = questions
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+      .map((q) => ({
+        id: q.id,
+        questionText: q.questionText,
+        optionA: q.optionA,
+        optionB: q.optionB,
+        optionC: q.optionC,
+        optionD: q.optionD,
+        correctOption: q.correctOption,
+        orderIndex: q.orderIndex,
+      }));
+
+    return {
+      id: quiz.id,
+      difficulty: quiz.difficulty,
+      pointValue: quiz.pointValue,
+      title: trans ? trans.title : 'Untitled Quiz',
+      rules: trans ? trans.rules || '' : '',
+      questions: sortedQuestions,
+    };
+  }
+
   static async createQuiz(data: {
     title: string;
     difficulty?: 'EASY' | 'MEDIUM' | 'HARD';

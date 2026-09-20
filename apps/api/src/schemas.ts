@@ -268,7 +268,7 @@ export const createCourseSchema: FastifySchema = {
   tags: ['Courses'],
   body: {
     type: 'object',
-    required: ['cefrLevel', 'price', 'isPremium', 'isPublished', 'title', 'description', 'language'],
+    required: ['cefrLevel', 'price', 'isPremium', 'isPublished', 'title', 'description'],
     properties: {
       cefrLevel: { type: 'string', example: 'A1' },
       price: { type: 'number', example: 19.99 },
@@ -276,7 +276,8 @@ export const createCourseSchema: FastifySchema = {
       isPublished: { type: 'boolean', example: false },
       title: { type: 'string', example: 'French A1' },
       description: { type: 'string', example: 'Introductory French course' },
-      language: { type: 'string', example: 'fr' }
+      language: { type: 'string', example: 'fr' },
+      locale: { type: 'string', example: 'fr' }
     }
   },
   response: {
@@ -374,7 +375,8 @@ export const updateCourseSchema: FastifySchema = {
       isPublished: { type: 'boolean', example: true },
       title: { type: 'string', example: 'Updated Spanish A1' },
       description: { type: 'string', example: 'Updated description' },
-      language: { type: 'string', example: 'es' }
+      language: { type: 'string', example: 'es' },
+      locale: { type: 'string', example: 'es' }
     }
   },
   response: {
@@ -690,6 +692,7 @@ export const updateProfileSchema: FastifySchema = {
     properties: {
       name: { type: 'string', minLength: 2, example: 'Johnny Doe' },
       avatarUrl: { type: 'string', example: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=Johnny' },
+      currentPassword: { type: 'string', minLength: 6, example: 'oldpassword123' },
       password: { type: 'string', minLength: 6, example: 'newpassword123' }
     }
   },
@@ -1557,6 +1560,46 @@ export const adminUploadLessonFileSchema: FastifySchema = {
 };
 
 // 10. Admin Quiz Management Router Schemas
+export const adminGetQuizDetailsSchema: FastifySchema = {
+  description: 'Get quiz details and questions with correctOption visible (Admin/Developer only)',
+  tags: ['Admin Quiz Management'],
+  params: {
+    type: 'object',
+    required: ['id'],
+    properties: {
+      id: { type: 'string', example: 'quiz-uuid' }
+    }
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', example: 'quiz-uuid' },
+        title: { type: 'string', example: 'Greetings MCQ Quiz' },
+        rules: { type: 'string', example: 'Answer all questions.' },
+        difficulty: { type: 'string', example: 'EASY' },
+        pointValue: { type: 'number', example: 100 },
+        questions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', example: 'question-uuid' },
+              questionText: { type: 'string', example: 'What does "Hola" mean?' },
+              optionA: { type: 'string', example: 'Hello' },
+              optionB: { type: 'string', example: 'Goodbye' },
+              optionC: { type: 'string', example: 'Thank you' },
+              optionD: { type: 'string', example: 'Please' },
+              correctOption: { type: 'string', example: 'A' },
+              orderIndex: { type: 'number', example: 1 }
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
 export const adminCreateQuizSchema: FastifySchema = {
   description: 'Create a new course assessment MCQ Quiz (Admin/Developer only)',
   tags: ['Admin Quiz Management'],

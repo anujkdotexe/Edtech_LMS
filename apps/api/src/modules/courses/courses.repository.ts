@@ -163,4 +163,102 @@ export class CoursesRepository {
       };
     });
   }
+
+  static async createCourseWithTranslation(courseData: {
+    cefrLevel: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+    price: string;
+    isPremium: boolean;
+    isPublished: boolean;
+    locale: string;
+    title: string;
+    description: string;
+  }) {
+    return await db.transaction(async (tx) => {
+      const [newCourse] = await tx
+        .insert(schema.courses)
+        .values({
+          cefrLevel: courseData.cefrLevel,
+          price: courseData.price,
+          isPremium: courseData.isPremium,
+          isPublished: courseData.isPublished,
+        })
+        .returning();
+
+      await tx.insert(schema.courseTranslations).values({
+        courseId: newCourse.id,
+        locale: courseData.locale,
+        title: courseData.title || 'Untitled Course',
+        description: courseData.description || '',
+      });
+
+      return newCourse;
+    });
+  }
+
+  static async updateCourseWithTranslation(
+    id: string,
+    courseUpdates: Partial<{
+      cefrLevel: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+      price: string;
+      isPremium: boolean;
+      isPublished: boolean;
+      updatedAt: Date;
+    }>,
+    translationData?: {
+      locale: string;
+      title?: string;
+      description?: string;
+    }
+  ) {
+    return await db.transaction(async (tx) => {
+      const [updatedCourse] = await tx
+        .update(schema.courses)
+        .set(courseUpdates)
+        .where(eq(schema.courses.id, id))
+        .returning();
+
+      if (!updatedCourse) return null;
+
+      if (translationData && (translationData.title !== undefined || translationData.description !== undefined)) {
+        const existingTrans = await tx
+          .select()
+          .from(schema.courseTranslations)
+          .where(
+            and(
+              eq(schema.courseTranslations.courseId, id),
+              eq(schema.courseTranslations.locale, translationData.locale)
+            )
+          )
+          .limit(1);
+
+        if (existingTrans.length > 0) {
+          const transUpdates: any = {};
+          if (translationData.title !== undefined) transUpdates.title = translationData.title;
+          if (translationData.description !== undefined) transUpdates.description = translationData.description;
+
+          await tx
+            .update(schema.courseTranslations)
+            .set(transUpdates)
+            .where(eq(schema.courseTranslations.id, existingTrans[0].id));
+        } else {
+          await tx.insert(schema.courseTranslations).values({
+            courseId: id,
+            locale: translationData.locale,
+            title: translationData.title || 'Untitled Course',
+            description: translationData.description || '',
+          });
+        }
+      }
+
+      return updatedCourse;
+    });
+  }
+
+  static async deleteCourse(id: string) {
+    const [deletedCourse] = await db
+      .delete(schema.courses)
+      .where(eq(schema.courses.id, id))
+      .returning();
+    return deletedCourse || null;
+  }
 }

@@ -162,9 +162,14 @@ export class ProfileService {
     };
   }
 
-  static async updateProfile(userId: string, data: { name?: string; avatarUrl?: string; password?: string }) {
+  static async updateProfile(userId: string, data: { name?: string; avatarUrl?: string; password?: string; currentPassword?: string }) {
     if (!data.name && !data.avatarUrl && !data.password) {
       throw new ValidationError('Nothing to update');
+    }
+
+    const user = await ProfileRepository.findUserById(userId);
+    if (!user) {
+      throw new NotFoundError('User not found');
     }
 
     let passwordHash: string | undefined;
@@ -172,6 +177,18 @@ export class ProfileService {
       if (data.password.length < 6) {
         throw new ValidationError('Password must be at least 6 characters');
       }
+
+      // If user does not have forced password reset active, verify current password
+      if (!user.forcePasswordReset && user.passwordHash) {
+        if (!data.currentPassword) {
+          throw new ValidationError('Current password is required to change password');
+        }
+        const isMatch = await bcrypt.compare(data.currentPassword, user.passwordHash);
+        if (!isMatch) {
+          throw new ValidationError('Current password is incorrect');
+        }
+      }
+
       passwordHash = await bcrypt.hash(data.password, 10);
     }
 

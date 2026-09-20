@@ -46,6 +46,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
   fastify.put('/modules/:id/lessons/reorder', { schema: schemas.reorderLessonsSchema }, AdminController.reorderLessons);
 
   // Quiz Management
+  fastify.get('/quizzes/:id', { schema: schemas.adminGetQuizDetailsSchema }, AdminController.getQuizDetails);
   fastify.post('/quizzes', { schema: schemas.adminCreateQuizSchema }, AdminController.createQuiz);
   fastify.put('/quizzes/:id', { schema: schemas.adminUpdateQuizSchema }, AdminController.updateQuiz);
   fastify.delete('/quizzes/:id', { schema: schemas.adminDeleteQuizSchema }, AdminController.deleteQuiz);

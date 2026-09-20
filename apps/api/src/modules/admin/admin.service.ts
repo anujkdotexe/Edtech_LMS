@@ -7,6 +7,7 @@ import { serverEnv } from '../../config';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 import { eq } from 'drizzle-orm';
+import { NotFoundError } from '../../errors';
 import { AdminRepository } from './admin.repository';
 import {
   StudentFilters,
@@ -473,6 +474,14 @@ export class AdminService {
   }
 
   // ─── Quizzes ──────────────────────────────────────────────────────────────
+  static async getQuizDetails(quizId: string, locale = 'en') {
+    const quiz = await AdminRepository.getQuizWithQuestions(quizId, locale);
+    if (!quiz) {
+      throw new NotFoundError('Quiz not found');
+    }
+    return quiz;
+  }
+
   static async createQuiz(dto: CreateQuizDto) {
     return AdminRepository.createQuiz(dto);
   }
