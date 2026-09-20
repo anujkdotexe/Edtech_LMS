@@ -37,13 +37,28 @@ export class ProfileController {
     }
   }
 
-  static async claimDailyWarmup(request: FastifyRequest, reply: FastifyReply) {
+  static async getDailyWarmup(request: FastifyRequest, reply: FastifyReply) {
     if (!request.user) {
       return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'User context is missing' });
     }
 
     try {
-      const result = await ProfileService.claimDailyWarmup(request.user.userId, request.ip);
+      const warmup = await ProfileService.getDailyWarmup(request.user.userId);
+      return sendSuccess(reply, warmup);
+    } catch (error) {
+      return handleControllerError(reply, error, 'Failed to fetch daily warmup');
+    }
+  }
+
+  static async claimDailyWarmup(request: FastifyRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'User context is missing' });
+    }
+
+    const challenge = request.body as { challengeId?: string; answer?: string } | undefined;
+
+    try {
+      const result = await ProfileService.claimDailyWarmup(request.user.userId, challenge, request.ip);
       return sendSuccess(reply, result);
     } catch (error) {
       return handleControllerError(reply, error, 'Failed to claim daily warmup');

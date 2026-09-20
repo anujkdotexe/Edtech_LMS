@@ -36,17 +36,25 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({
   const xpNeeded = stats?.xpNeededForNextLevel ?? 250;
   const progressPercent = stats?.progressPercent ?? 0;
 
+  const getLevelTitle = (lvl: number) => {
+    if (lvl >= 20) return 'Grand Master Polyglot';
+    if (lvl >= 10) return 'Fluent Scholar';
+    if (lvl >= 5) return 'Dedicated Linguist';
+    if (lvl >= 3) return 'Apprentice Polyglot';
+    return 'Novice Explorer';
+  };
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* Streak Card */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm flex items-center justify-between">
         <div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Streak</p>
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Current Streak</p>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-2xl font-black text-slate-900">{currentStreak}</span>
-            <span className="text-xs font-semibold text-slate-500">days</span>
+            <span className="text-xs font-semibold text-slate-600">days</span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Best: {longestStreak} days</p>
+          <p className="text-xs text-slate-600 mt-0.5">Best: {longestStreak} days</p>
         </div>
         <StreakBadge currentStreak={currentStreak} longestStreak={longestStreak} size="lg" />
       </div>
@@ -54,11 +62,11 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({
       {/* Level Card */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm flex items-center justify-between">
         <div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Level</p>
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Current Level</p>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-2xl font-black text-slate-900">Lvl {level}</span>
           </div>
-          <p className="text-[11px] text-indigo-600 font-semibold mt-0.5">Fluent Explorer</p>
+          <p className="text-xs text-indigo-700 font-semibold mt-0.5">{getLevelTitle(level)}</p>
         </div>
         <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
           <Award className="w-6 h-6" />
@@ -68,9 +76,9 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({
       {/* Total XP & Progress Card */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Experience</p>
-          <span className="text-xs font-extrabold text-amber-500 flex items-center gap-1">
-            <Zap className="w-3.5 h-3.5 fill-amber-500" />
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Experience</p>
+          <span className="text-xs font-extrabold text-amber-700 flex items-center gap-1">
+            <Zap className="w-3.5 h-3.5 fill-amber-700" />
             {totalXp} XP
           </span>
         </div>
@@ -82,7 +90,7 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({
           progressPercent={progressPercent}
           showDetails={false}
         />
-        <div className="flex justify-between text-[10px] font-semibold text-slate-400">
+        <div className="flex justify-between text-xs font-semibold text-slate-600">
           <span>{xpInLevel} / {xpNeeded} XP</span>
           <span>Next Lvl</span>
         </div>
@@ -91,15 +99,15 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({
       {/* Global Rank Card */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm flex items-center justify-between">
         <div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Global Rank</p>
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Global Rank</p>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-2xl font-black text-slate-900">
               {rank ? `#${rank}` : 'Top 10%'}
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Updated hourly</p>
+          <p className="text-xs text-slate-600 mt-0.5">Updated hourly</p>
         </div>
-        <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-500">
+        <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
           <Trophy className="w-6 h-6" />
         </div>
       </div>

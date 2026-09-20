@@ -44,7 +44,7 @@ export const Navbar: React.FC = () => {
         </Link>
 
         {/* Center Nav Links */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav aria-label="Main Navigation" className="hidden md:flex items-center gap-1">
           {studentNavLinks.map((link) => {
             const active = pathname === link.path;
             return (
@@ -79,10 +79,18 @@ export const Navbar: React.FC = () => {
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
+              aria-label="User Profile Menu"
+              aria-expanded={dropdownOpen}
               className="w-9 h-9 rounded-full border-2 border-slate-200 overflow-hidden bg-slate-100 hover:border-primary/40 transition flex items-center justify-center focus:outline-none"
             >
               {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                <img
+                  src={user.avatarUrl}
+                  alt="Avatar"
+                  width="36"
+                  height="36"
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <User className="w-4 h-4 text-slate-500" />
               )}
@@ -92,13 +100,13 @@ export const Navbar: React.FC = () => {
               <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl py-2 z-50 text-xs">
                 <div className="px-4 py-2 border-b border-slate-100">
                   <p className="font-bold text-slate-800 truncate">{user?.name}</p>
-                  <p className="text-[11px] text-slate-400 truncate">{user?.email}</p>
+                  <p className="text-xs text-slate-600 truncate">{user?.email}</p>
                   <div className="mt-1 flex items-center gap-1">
-                    <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] font-extrabold rounded">
+                    <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-xs font-bold rounded">
                       {user?.role}
                     </span>
                     {user?.stats?.level && (
-                      <span className="text-[10px] text-slate-500 font-semibold">
+                      <span className="text-xs text-slate-600 font-semibold">
                         Lvl {user.stats.level}
                       </span>
                     )}
@@ -111,7 +119,7 @@ export const Navbar: React.FC = () => {
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-50 font-medium"
                   >
-                    <User className="w-4 h-4 text-slate-400" />
+                    <User className="w-4 h-4 text-slate-500" />
                     <span>My Profile</span>
                   </Link>
 

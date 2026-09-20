@@ -24,18 +24,23 @@ export interface BadgeEvaluationContext {
   action?: string;
 }
 
+export interface AwardedBadge {
+  badgeId: string;
+  name: string;
+}
+
 export async function checkAndAwardBadges(
   tx: any,
   userId: string,
   context: BadgeEvaluationContext
-): Promise<string[]> {
+): Promise<AwardedBadge[]> {
   const existingBadges = await tx
     .select({ badgeId: schema.userBadges.badgeId })
     .from(schema.userBadges)
     .where(eq(schema.userBadges.userId, userId));
 
   const unlockedBadgeIds = new Set<string>(existingBadges.map((b: { badgeId: string }) => b.badgeId));
-  const newlyAwarded: string[] = [];
+  const newlyAwarded: AwardedBadge[] = [];
 
   for (const badge of AVAILABLE_BADGES) {
     if (unlockedBadgeIds.has(badge.id)) continue;
@@ -62,7 +67,7 @@ export async function checkAndAwardBadges(
           badgeId: badge.id,
           unlockedAt: new Date(),
         }).onConflictDoNothing();
-        newlyAwarded.push(badge.name);
+        newlyAwarded.push({ badgeId: badge.id, name: badge.name });
       } catch {
         // Safe duplicate prevention
       }

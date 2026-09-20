@@ -23,7 +23,7 @@ export const Badge: React.FC<BadgeProps> = ({
   };
 
   const sizeStyles = {
-    sm: 'text-[10px] px-2 py-0.5',
+    sm: 'text-xs px-2 py-0.5',
     md: 'text-xs px-2.5 py-1',
   };
 

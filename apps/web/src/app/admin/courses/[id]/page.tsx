@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useAuthStore } from '../../../../store/useAuthStore';
 import { apiFetch } from '../../../../lib/api';
 import Link from 'next/link';
@@ -36,8 +36,10 @@ interface CourseDetails {
   modules: Module[];
 }
 
-export default function AdminCourseEditor({ params }: { params: { id: string } }) {
+export default function AdminCourseEditor({ params }: { params?: { id?: string } }) {
   const router = useRouter();
+  const routeParams = useParams();
+  const courseId = (routeParams?.id as string) || params?.id;
   const { user, isAuthenticated } = useAuthStore();
   const [course, setCourse] = useState<CourseDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,15 +54,16 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
   const [uploadingLessonId, setUploadingLessonId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated && ['ADMIN', 'DEVELOPER'].includes(user?.role || '')) {
-      loadCourse();
+    if (isAuthenticated && ['ADMIN', 'DEVELOPER'].includes(user?.role || '') && courseId && courseId !== 'undefined') {
+      loadCourse(courseId);
     }
-  }, [isAuthenticated, user, params.id]);
+  }, [isAuthenticated, user, courseId]);
 
-  const loadCourse = async () => {
+  const loadCourse = async (id: string) => {
+    if (!id || id === 'undefined') return;
     setLoading(true);
     try {
-      const data = await apiFetch<CourseDetails>(`/api/courses/${params.id}`);
+      const data = await apiFetch<CourseDetails>(`/api/courses/${id}`);
       setCourse(data);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to load course details');
@@ -70,15 +73,15 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
   };
 
   const handleTogglePublish = async () => {
-    if (!course) return;
+    if (!course || !courseId) return;
     try {
-      await apiFetch(`/api/courses/${params.id}`, {
+      await apiFetch(`/api/courses/${courseId}`, {
         method: 'PUT',
         body: JSON.stringify({ isPublished: !course.isPublished }),
       });
-      loadCourse();
+      loadCourse(courseId);
     } catch (err: any) {
-      alert(err.message || 'Could not update publication state');
+      alert(err.message || 'Error updating status');
     }
   };
 
@@ -86,7 +89,7 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
     e.preventDefault();
     try {
       if (moduleModal.mode === 'CREATE') {
-        await apiFetch(`/api/admin/courses/${params.id}/modules`, {
+        await apiFetch(`/api/admin/courses/${courseId}/modules`, {
           method: 'POST',
           body: JSON.stringify({ title: moduleModal.title }),
         });
@@ -97,7 +100,7 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
         });
       }
       setModuleModal({ ...moduleModal, isOpen: false });
-      loadCourse();
+      if (courseId) loadCourse(courseId);
     } catch (err: any) {
       alert(err.message || 'Could not save module');
     }
@@ -107,7 +110,7 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
     if (!confirm('Are you sure you want to delete this module and all its lessons?')) return;
     try {
       await apiFetch(`/api/admin/modules/${moduleId}`, { method: 'DELETE' });
-      loadCourse();
+      if (courseId) loadCourse(courseId);
     } catch (err: any) {
       alert(err.message || 'Could not delete module');
     }
@@ -128,7 +131,7 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
         });
       }
       setLessonModal({ ...lessonModal, isOpen: false });
-      loadCourse();
+      if (courseId) loadCourse(courseId);
     } catch (err: any) {
       alert(err.message || 'Could not save lesson');
     }
@@ -138,7 +141,7 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
     if (!confirm('Are you sure you want to delete this lesson?')) return;
     try {
       await apiFetch(`/api/admin/lessons/${lessonId}`, { method: 'DELETE' });
-      loadCourse();
+      if (courseId) loadCourse(courseId);
     } catch (err: any) {
       alert(err.message || 'Could not delete lesson');
     }
@@ -156,7 +159,7 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
         body: formData,
       });
       
-      loadCourse();
+      if (courseId) loadCourse(courseId);
     } catch (err: any) {
       alert(err.message || 'Upload failed');
     } finally {

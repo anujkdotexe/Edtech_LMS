@@ -27,7 +27,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const isAuthEndpoint =
     path.includes('/api/auth/login') ||
     path.includes('/api/auth/signup') ||
-    path.includes('/api/auth/refresh');
+    path.includes('/api/auth/refresh') ||
+    path.includes('/api/auth/me');
 
   if (response.status === 401 && !isAuthEndpoint) {
     if (!refreshPromise) {
@@ -65,6 +66,14 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
         return {} as T;
       }
       return retryResponse.json();
+    } else {
+      // Global 401 interceptor: redirect to login if session has expired
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname;
+        if (currentPath !== '/login' && !currentPath.startsWith('/reset-password')) {
+          window.location.href = '/login';
+        }
+      }
     }
   }
 

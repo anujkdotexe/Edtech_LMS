@@ -20,8 +20,8 @@ interface CourseCardProps {
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({ course, onPurchaseClick }) => {
-  const getLevelVariant = (level: string) => {
-    switch (level.toUpperCase()) {
+  const getLevelVariant = (level?: string) => {
+    switch ((level || 'A1').toUpperCase()) {
       case 'A1':
       case 'A2':
         return 'success';
@@ -47,31 +47,45 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onPurchaseClick 
           </Badge>
           <div className="flex items-center gap-1.5">
             {course.isPremium ? (
-              <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
+              <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
                 ${course.price}
               </span>
             ) : (
-              <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
                 Free
               </span>
             )}
             {isAccessGranted ? (
               <span title="Unlocked">
-                <Unlock className="w-3.5 h-3.5 text-emerald-500" />
+                <Unlock className="w-3.5 h-3.5 text-emerald-600" />
               </span>
             ) : (
               <span title="Locked">
-                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                <Lock className="w-3.5 h-3.5 text-slate-500" />
               </span>
             )}
           </div>
         </div>
 
         <div>
-          <h3 className="font-bold text-slate-900 text-base group-hover:text-primary transition line-clamp-1">
-            {course.title}
-          </h3>
-          <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+          {isAccessGranted ? (
+            <Link href={`/courses/${course.id}`}>
+              <h3 className="font-bold text-slate-900 text-base group-hover:text-primary transition line-clamp-1 hover:underline cursor-pointer">
+                {course.title}
+              </h3>
+            </Link>
+          ) : (
+            <button
+              onClick={() => onPurchaseClick && onPurchaseClick(course)}
+              aria-label={`Enroll in ${course.title}`}
+              className="text-left w-full"
+            >
+              <h3 className="font-bold text-slate-900 text-base group-hover:text-primary transition line-clamp-1 hover:underline cursor-pointer">
+                {course.title}
+              </h3>
+            </button>
+          )}
+          <p className="text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">
             {course.description}
           </p>
         </div>

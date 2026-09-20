@@ -6,7 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { serverEnv } from './config';
 import { verifyJWT } from './modules/auth/auth.middleware';
-import { getPublicSettingsHandler } from './modules/admin/settings.handlers';
+import { AdminController } from './modules/admin/admin.controller';
 import { authRoutes } from './modules/auth/auth.routes';
 import { coursesRoutes } from './modules/courses/courses.routes';
 import { CoursesController } from './modules/courses/courses.controller';
@@ -23,11 +23,19 @@ import * as schemas from './schemas';
 
 const server = fastify({
   logger: true,
+  keepAliveTimeout: 65000,
+  forceCloseConnections: false,
   ajv: {
     customOptions: {
       strict: false,
     },
   },
+});
+
+// Configure Keep-Alive persistent connection response headers
+server.addHook('onSend', async (_request, reply) => {
+  reply.header('Connection', 'keep-alive');
+  reply.header('Keep-Alive', 'timeout=65');
 });
 
 // Ensure upload directory exists for local PDF syllabus courseware storage
@@ -90,7 +98,7 @@ server.register(async (api) => {
   // Public settings & rotating daily tips
   api.get('/api/public/settings', {
     schema: schemas.publicSettingsSchema,
-    handler: getPublicSettingsHandler,
+    handler: AdminController.getPublicSettings,
   });
 
   // 2. Authentication Router

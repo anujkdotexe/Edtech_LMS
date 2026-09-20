@@ -160,9 +160,10 @@ export const resetPasswordSchema: FastifySchema = {
   tags: ['Authentication'],
   body: {
     type: 'object',
-    required: ['token', 'password'],
+    required: ['token'],
     properties: {
       token: { type: 'string', example: 'reset-token-uuid' },
+      newPassword: { type: 'string', minLength: 6, example: 'newpassword123' },
       password: { type: 'string', minLength: 6, example: 'newpassword123' }
     }
   },
@@ -318,6 +319,7 @@ export const courseByIdSchema: FastifySchema = {
         isPremium: { type: 'boolean', example: true },
         isPublished: { type: 'boolean', example: true },
         isUnlocked: { type: 'boolean', example: true },
+        progressPercent: { type: 'number', example: 50 },
         title: { type: 'string', example: 'Spanish A1' },
         description: { type: 'string', example: 'Spanish details' },
         modules: {
@@ -337,7 +339,11 @@ export const courseByIdSchema: FastifySchema = {
                     orderIndex: { type: 'number', example: 1 },
                     title: { type: 'string', example: 'Saying Hola' },
                     summary: { type: 'string', example: 'Basics of greeting' },
-                    filePath: { type: 'string', nullable: true, example: '/public/uploads/pdf-slug.pdf' }
+                    filePath: { type: 'string', nullable: true, example: '/public/uploads/pdf-slug.pdf' },
+                    lessonType: { type: 'string', example: 'VIDEO' },
+                    durationSeconds: { type: 'number', example: 300 },
+                    isFreePreview: { type: 'boolean', example: false },
+                    isCompleted: { type: 'boolean', example: false }
                   }
                 }
               }
@@ -465,11 +471,14 @@ export const quizzesSchema: FastifySchema = {
         type: 'object',
         properties: {
           id: { type: 'string', example: 'quiz-uuid' },
-          courseId: { type: 'string', example: 'course-uuid' },
-          xpReward: { type: 'number', example: 100 },
-          passingScore: { type: 'number', example: 70 },
           title: { type: 'string', example: 'Greetings MCQ Quiz' },
-          description: { type: 'string', example: 'Test your understanding of basic greetings.' }
+          rules: { type: 'string', example: 'Test your understanding of basic greetings.' },
+          difficulty: { type: 'string', example: 'EASY' },
+          pointValue: { type: 'number', example: 50 },
+          courseId: { type: 'string', nullable: true },
+          xpReward: { type: 'number', nullable: true },
+          passingScore: { type: 'number', nullable: true },
+          description: { type: 'string', nullable: true },
         }
       }
     }
@@ -676,9 +685,36 @@ export const updateProfileSchema: FastifySchema = {
   }
 };
 
+export const getDailyWarmupSchema: FastifySchema = {
+  description: 'Retrieve today\'s dynamic 30-second vocab warmup challenge',
+  tags: ['Profile'],
+  security: [{ cookieAuth: [] }],
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        challengeId: { type: 'string', example: 'vocab_fr_book' },
+        language: { type: 'string', example: 'French' },
+        prompt: { type: 'string', example: 'Choose the correct French translation for "The Book":' },
+        options: { type: 'array', items: { type: 'string' } },
+        completedToday: { type: 'boolean', example: false },
+        xpReward: { type: 'number', example: 25 },
+      },
+    },
+  },
+};
+
 export const claimWarmupSchema: FastifySchema = {
   description: 'Claim daily warmup XP (+25 XP) and update study streak (server-side gated once per day)',
   tags: ['Profile'],
+  body: {
+    type: 'object',
+    required: ['challengeId', 'answer'],
+    properties: {
+      challengeId: { type: 'string', example: 'vocab_fr_book' },
+      answer: { type: 'string', example: 'Le livre' },
+    },
+  },
   response: {
     200: {
       type: 'object',
@@ -714,14 +750,14 @@ export const leaderboardSchema: FastifySchema = {
             properties: {
               id: { type: 'string', example: 'user-uuid' },
               name: { type: 'string', example: 'John Doe' },
-              avatarUrl: { type: ['string', 'null'], example: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=John' },
+              avatarUrl: { type: 'string', nullable: true, example: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=John' },
               totalXp: { type: 'number', example: 550 },
               level: { type: 'number', example: 2 },
               rank: { type: 'number', example: 1 }
             }
           }
         },
-        currentUserRank: { type: ['number', 'null'], example: 1 },
+        currentUserRank: { type: 'number', nullable: true, example: 1 },
         currentUserXp: { type: 'number', example: 550 }
       }
     }
@@ -734,9 +770,9 @@ export const devImpersonateSchema: FastifySchema = {
   tags: ['Developer Tools'],
   body: {
     type: 'object',
-    required: ['email'],
     properties: {
-      email: { type: 'string', format: 'email', example: 'student@lms.local' }
+      email: { type: 'string', format: 'email', example: 'student@lms.local' },
+      studentEmail: { type: 'string', format: 'email', example: 'student@lms.local' }
     }
   },
   response: {
@@ -973,6 +1009,7 @@ export const adminResetStudentPasswordSchema: FastifySchema = {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
+        tempPassword: { type: 'string', example: 'a1b2c3d4A1!' },
         message: { type: 'string', example: 'Student password reset successfully' }
       }
     }
@@ -1782,9 +1819,33 @@ export const getReconciliationSchema: FastifySchema = {
     200: {
       type: 'object',
       properties: {
+        reconciliationStatus: { type: 'string' },
+        message: { type: 'string' },
         generatedAt: { type: 'string' },
-        summary: { type: 'object' },
-        lineItems: { type: 'array', items: { type: 'object' } }
+        summary: {
+          type: 'object',
+          properties: {
+            totalOrders: { type: 'number' },
+            successCount: { type: 'number' },
+            failedCount: { type: 'number' },
+            refundedCount: { type: 'number' },
+            pendingCount: { type: 'number' },
+          }
+        },
+        revenue: {
+          type: 'object',
+          properties: {
+            dbTotalRevenue: { type: 'number' },
+            gatewayTotalRevenue: { type: 'number' },
+            variance: { type: 'number' },
+            variancePct: { type: 'string' },
+          }
+        },
+        flaggedOrders: {
+          type: 'array',
+          items: { type: 'object', additionalProperties: true }
+        },
+        lineItems: { type: 'array', items: { type: 'object', additionalProperties: true } }
       }
     }
   }

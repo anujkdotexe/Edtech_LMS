@@ -61,7 +61,7 @@ export class CoursesController {
     }
 
     try {
-      const result = await CoursesService.completeLesson(id, userId);
+      const result = await CoursesService.completeLesson(id, request.user!);
       return sendSuccess(reply, result);
     } catch (error) {
       return handleControllerError(reply, error, 'Could not complete lesson');

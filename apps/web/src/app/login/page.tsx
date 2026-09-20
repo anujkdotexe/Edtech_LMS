@@ -311,7 +311,7 @@ export default function LoginPage() {
                       className={`aspect-square rounded-full border-2 overflow-hidden hover:scale-105 active:scale-95 transition relative ${selectedAvatar === url ? 'border-primary ring-2 ring-primary/15' : 'border-slate-100 opacity-80 hover:opacity-100'}`}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt={`Avatar seed ${i+1}`} className="w-full h-full object-cover" />
+                      <img src={url} alt={`Avatar seed ${i+1}`} width="48" height="48" className="w-full h-full object-cover" />
                       {selectedAvatar === url && (
                         <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
                           <Check className="w-3.5 h-3.5 text-white drop-shadow" />

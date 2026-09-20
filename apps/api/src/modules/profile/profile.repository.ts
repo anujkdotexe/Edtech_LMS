@@ -1,4 +1,4 @@
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 import { updateStreakInTx } from '../../utils/streaks';
@@ -26,45 +26,76 @@ export class ProfileRepository {
   }
 
   static async findUserPurchases(userId: string, locale = 'en') {
-    return await db
+    const orders = await db
       .select({
         id: schema.orders.id,
+        courseId: schema.orders.courseId,
         amount: schema.orders.amount,
         createdAt: schema.orders.createdAt,
-        courseTitle: schema.courseTranslations.title,
       })
       .from(schema.orders)
-      .innerJoin(
-        schema.courseTranslations,
-        and(
-          eq(schema.orders.courseId, schema.courseTranslations.courseId),
-          eq(schema.courseTranslations.locale, locale)
-        )
-      )
-      .where(eq(schema.orders.userId, userId))
+      .where(and(eq(schema.orders.userId, userId), eq(schema.orders.status, 'SUCCESS')))
       .orderBy(desc(schema.orders.createdAt));
+
+    if (orders.length === 0) return [];
+
+    const courseIds = [...new Set(orders.map((o) => o.courseId))];
+    const translations = await db
+      .select()
+      .from(schema.courseTranslations)
+      .where(inArray(schema.courseTranslations.courseId, courseIds));
+
+    return orders.map((order) => {
+      const trans =
+        translations.find((t) => t.courseId === order.courseId && t.locale === locale) ||
+        translations.find((t) => t.courseId === order.courseId && t.locale === 'en') ||
+        translations.find((t) => t.courseId === order.courseId);
+
+      return {
+        id: order.id,
+        amount: order.amount,
+        createdAt: order.createdAt,
+        courseTitle: trans?.title || 'Language Course',
+      };
+    });
   }
 
   static async findUserQuizAttempts(userId: string, locale = 'en', limit = 10) {
-    return await db
+    const attempts = await db
       .select({
         id: schema.quizAttempts.id,
+        quizId: schema.quizAttempts.quizId,
         score: schema.quizAttempts.score,
         passed: schema.quizAttempts.passed,
         attemptedAt: schema.quizAttempts.attemptedAt,
-        quizTitle: schema.quizTranslations.title,
       })
       .from(schema.quizAttempts)
-      .innerJoin(
-        schema.quizTranslations,
-        and(
-          eq(schema.quizAttempts.quizId, schema.quizTranslations.quizId),
-          eq(schema.quizTranslations.locale, locale)
-        )
-      )
       .where(eq(schema.quizAttempts.userId, userId))
       .orderBy(desc(schema.quizAttempts.attemptedAt))
       .limit(limit);
+
+    if (attempts.length === 0) return [];
+
+    const quizIds = [...new Set(attempts.map((a) => a.quizId))];
+    const translations = await db
+      .select()
+      .from(schema.quizTranslations)
+      .where(inArray(schema.quizTranslations.quizId, quizIds));
+
+    return attempts.map((attempt) => {
+      const trans =
+        translations.find((t) => t.quizId === attempt.quizId && t.locale === locale) ||
+        translations.find((t) => t.quizId === attempt.quizId && t.locale === 'en') ||
+        translations.find((t) => t.quizId === attempt.quizId);
+
+      return {
+        id: attempt.id,
+        score: attempt.score,
+        passed: attempt.passed,
+        attemptedAt: attempt.attemptedAt,
+        quizTitle: trans?.title || 'Language Quiz',
+      };
+    });
   }
 
   static async checkWarmupCompletedToday(userId: string, todayStr: string): Promise<boolean> {
@@ -98,58 +129,57 @@ export class ProfileRepository {
 
   static async claimDailyWarmupTx(userId: string, todayStr: string, xpAwarded = 25) {
     return await db.transaction(async (tx) => {
-      // 1. Check if already claimed
-      const existing = await tx
-        .select()
-        .from(schema.dailyWarmupCompletions)
-        .where(
-          and(
-            eq(schema.dailyWarmupCompletions.userId, userId),
-            eq(schema.dailyWarmupCompletions.completedDate, todayStr)
-          )
-        )
-        .limit(1);
+      // 1. Atomic idempotent insert with conflict handling
+      const inserted = await tx
+        .insert(schema.dailyWarmupCompletions)
+        .values({
+          userId,
+          completedDate: todayStr,
+          xpAwarded,
+        })
+        .onConflictDoNothing({
+          target: [schema.dailyWarmupCompletions.userId, schema.dailyWarmupCompletions.completedDate],
+        })
+        .returning();
 
-      if (existing.length > 0) {
+      if (inserted.length === 0) {
         return { alreadyClaimed: true };
       }
 
-      // 2. Insert completion
-      await tx.insert(schema.dailyWarmupCompletions).values({
-        userId,
-        completedDate: todayStr,
-        xpAwarded,
-      });
+      // 2. Atomic XP increment
+      const xpUpsert = await tx
+        .insert(schema.userXp)
+        .values({
+          userId,
+          totalXp: xpAwarded,
+          level: 1,
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: schema.userXp.userId,
+          set: {
+            totalXp: sql`${schema.userXp.totalXp} + ${xpAwarded}`,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
 
-      // 3. Update XP
-      const currentXpRows = await tx
-        .select()
-        .from(schema.userXp)
-        .where(eq(schema.userXp.userId, userId))
-        .limit(1);
-
-      const oldTotalXp = currentXpRows.length > 0 ? currentXpRows[0].totalXp : 0;
-      const newTotalXp = oldTotalXp + xpAwarded;
+      const newTotalXp = xpUpsert[0].totalXp;
+      const oldXp = newTotalXp - xpAwarded;
       const { level: newLevel } = calculateLevelStats(newTotalXp);
-      const { didLevelUp } = didUserLevelUp(oldTotalXp, newTotalXp);
+      const { didLevelUp } = didUserLevelUp(oldXp, newTotalXp);
 
-      if (currentXpRows.length > 0) {
+      if (xpUpsert[0].level !== newLevel) {
         await tx
           .update(schema.userXp)
-          .set({ totalXp: newTotalXp, level: newLevel, updatedAt: new Date() })
+          .set({ level: newLevel })
           .where(eq(schema.userXp.userId, userId));
-      } else {
-        await tx.insert(schema.userXp).values({
-          userId,
-          totalXp: newTotalXp,
-          level: newLevel,
-        });
       }
 
-      // 4. Update Streak
+      // 3. Update Streak
       const streakResult = await updateStreakInTx(tx, userId, todayStr);
 
-      // 5. Award Badges
+      // 4. Award Badges
       const newBadges = await checkAndAwardBadges(tx, userId, {
         streak: streakResult.currentStreak,
         newLevel,

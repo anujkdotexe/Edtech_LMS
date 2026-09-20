@@ -61,6 +61,25 @@
   }
 }
 
+@layer utilities {
+  /* WCAG AA contrast compliance utility overrides */
+  .text-slate-400 {
+    color: #64748b; /* Accessible slate (~4.5:1 on white) */
+  }
+  .text-slate-500 {
+    color: #475569; /* Accessible slate (>5.5:1) */
+  }
+  .text-amber-400 {
+    color: #b45309; /* Darker amber for badges (>4.5:1) */
+  }
+  .text-amber-500 {
+    color: #b45309; /* Accessible amber on light surfaces */
+  }
+  .text-emerald-600 {
+    color: #047857; /* Accessible emerald on light backgrounds */
+  }
+}
+
 /* Animations */
 @keyframes streakPulse {
   0% {

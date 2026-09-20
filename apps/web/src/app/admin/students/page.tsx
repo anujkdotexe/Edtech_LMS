@@ -201,10 +201,10 @@ export default function AdminStudentsPage() {
   };
 
   const handleResetPassword = async (id: string) => {
-    if (!confirm('Reset password to default (password123)?')) return;
+    if (!confirm('Generate a temporary password and reset this student\'s account?')) return;
     try {
-      await apiFetch(`/api/admin/students/${id}/reset-password`, { method: 'POST' });
-      alert('Password reset to password123 successfully.');
+      const res: any = await apiFetch(`/api/admin/students/${id}/reset-password`, { method: 'POST' });
+      alert(res?.tempPassword ? `Password reset successfully. Temporary password: ${res.tempPassword}` : (res?.message || 'Password reset successfully.'));
     } catch (err: any) {
       alert(err.message || 'Error resetting password');
     }

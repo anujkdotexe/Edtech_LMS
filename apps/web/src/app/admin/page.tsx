@@ -254,20 +254,26 @@ export default function AdminDashboardPage() {
               </h3>
               <div className="space-y-4">
                 {dashboardData.streakLeaders.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-4">No active streaks yet.</p>
+                  <p className="text-xs text-slate-600 text-center py-4">No active streaks yet.</p>
                 ) : (
                   dashboardData.streakLeaders.map((leader, i) => (
                     <div key={i} className="flex items-center gap-3">
                       <div className="relative">
-                        <img src={leader.avatarUrl || '/avatars/default.svg'} alt={leader.name} className="w-10 h-10 rounded-full border-2 border-slate-100" />
-                        <div className="absolute -top-2 -right-2 w-5 h-5 bg-amber-100 border border-amber-200 rounded-full flex items-center justify-center text-[10px] font-bold text-amber-700">
+                        <img
+                          src={leader.avatarUrl || '/avatars/default.svg'}
+                          alt={leader.name}
+                          width="40"
+                          height="40"
+                          className="w-10 h-10 rounded-full border-2 border-slate-100"
+                        />
+                        <div className="absolute -top-2 -right-2 w-5 h-5 bg-amber-100 border border-amber-200 rounded-full flex items-center justify-center text-xs font-bold text-amber-800">
                           #{i + 1}
                         </div>
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-bold text-slate-800">{leader.name}</p>
-                        <p className="text-[10px] font-bold text-amber-600 flex items-center gap-1">
-                          <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" /> {leader.streak} Day Streak
+                        <p className="text-xs font-bold text-amber-800 flex items-center gap-1">
+                          <Flame className="w-3.5 h-3.5 fill-amber-700 text-amber-700" /> {leader.streak} Day Streak
                         </p>
                       </div>
                     </div>

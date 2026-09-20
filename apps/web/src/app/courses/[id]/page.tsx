@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '../../../lib/api';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { 
@@ -36,8 +36,10 @@ interface CourseDetails {
   modules: Module[];
 }
 
-export default function CourseDetailsPage({ params }: { params: { id: string } }) {
+export default function CourseDetailsPage({ params }: { params?: { id?: string } }) {
   const router = useRouter();
+  const routeParams = useParams();
+  const courseId = (routeParams?.id as string) || params?.id;
   const { user, isAuthenticated, fetchProfile } = useAuthStore();
   const [course, setCourse] = useState<CourseDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,20 +56,21 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      loadCourseSyllabus();
+    if (courseId && courseId !== 'undefined') {
+      loadCourseSyllabus(courseId);
     }
-  }, [isAuthenticated, params.id]);
+  }, [courseId]);
 
-  const loadCourseSyllabus = async () => {
+  const loadCourseSyllabus = async (id: string) => {
+    if (!id || id === 'undefined') return;
     setLoading(true);
     setError(null);
     try {
-      const details = await apiFetch<CourseDetails>(`/api/courses/${params.id}`);
+      const details = await apiFetch<CourseDetails>(`/api/courses/${id}`);
       setCourse(details);
       
       // Auto-select first lesson if unlocked
-      if (details.modules.length > 0 && details.modules[0].lessons.length > 0) {
+      if (details?.modules?.length > 0 && details.modules[0].lessons?.length > 0) {
         const firstLesson = details.modules[0].lessons[0];
         setActiveLesson(firstLesson);
       }
@@ -99,7 +102,7 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
         setTimeout(async () => {
           setPurchaseStatus('IDLE');
           await fetchProfile();
-          await loadCourseSyllabus();
+          if (courseId) await loadCourseSyllabus(courseId);
         }, 1500);
       } else {
         setPurchaseStatus('FAILED');
@@ -127,8 +130,6 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
       console.error('Failed to complete lesson:', err);
     }
   };
-
-  if (!isAuthenticated) return null;
 
   if (loading) {
     return (
@@ -160,7 +161,7 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
     <div className="space-y-8 animate-[fadeIn_0.4s_ease-out]">
       
       {/* Back Button */}
-      <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-primary transition group">
+      <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-primary transition group">
         <ChevronLeft className="w-4 h-4 transition duration-200 group-hover:-translate-x-0.5" /> Back to Dashboard
       </Link>
 
@@ -172,17 +173,17 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
               CEFR {course.cefrLevel} Language Catalog
             </span>
             {course.isPremium && (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase flex items-center gap-1 ${course.isUnlocked ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-amber-50 border-amber-200 text-amber-600'}`}>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase flex items-center gap-1 ${course.isUnlocked ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
                 {course.isUnlocked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
                 Premium Syllabus
               </span>
             )}
           </div>
           
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display text-slate-800 leading-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display text-slate-900 leading-tight">
             {course.title}
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
             {course.description}
           </p>
         </div>
@@ -190,7 +191,7 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
         {/* Purchase simulation widget embedded directly in course header */}
         {course.isPremium && !course.isUnlocked && (
           <div className="w-full md:w-auto bg-amber-50/50 border border-amber-100 rounded-xl p-4 flex flex-col items-center justify-center shrink-0 min-w-[200px]">
-            <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wider mb-1">Sandbox License</span>
+            <span className="text-[10px] text-amber-800 font-bold uppercase tracking-wider mb-1">Sandbox License</span>
             <span className="text-2xl font-black font-display text-slate-800 mb-3">${course.price}</span>
             
             {purchaseStatus === 'SUCCESS' ? (
@@ -219,19 +220,19 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
         
         {/* Left Side: Modules & Lessons Tree Sidebar */}
         <section className="lg:col-span-4 bg-white border border-slate-100 rounded-xl shadow-premium p-5 space-y-5">
-          <h3 className="font-display font-extrabold text-slate-800 text-sm pb-2.5 border-b border-slate-100">
+          <h2 className="font-display font-extrabold text-slate-800 text-sm pb-2.5 border-b border-slate-100">
             Syllabus Curriculum Modules
-          </h3>
+          </h2>
 
           <div className="space-y-6">
             {course.modules.sort((a,b) => a.orderIndex - b.orderIndex).map((mod) => (
               <div key={mod.id} className="space-y-3">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded bg-slate-50 border flex items-center justify-center font-bold text-[10px] text-slate-500">
+                <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wide flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded bg-slate-50 border flex items-center justify-center font-bold text-[10px] text-slate-600">
                     M{mod.orderIndex}
                   </span>
                   {mod.title}
-                </h4>
+                </h3>
 
                 <div className="space-y-1">
                   {mod.lessons.sort((a,b) => a.orderIndex - b.orderIndex).map((lesson) => {
@@ -276,11 +277,11 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
                   </span>
                   
                   {activeLesson.filePath ? (
-                    <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                    <span className="text-[10px] text-slate-600 font-bold flex items-center gap-1">
                       <Eye className="w-3.5 h-3.5" /> Interactive local view
                     </span>
                   ) : (
-                    <span className="text-[10px] text-amber-600 font-bold flex items-center gap-1">
+                    <span className="text-[10px] text-amber-800 font-bold flex items-center gap-1">
                       <Lock className="w-3.5 h-3.5" /> Premium locked
                     </span>
                   )}
@@ -289,7 +290,7 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
                 <h3 className="font-display font-extrabold text-slate-800 text-lg leading-tight">
                   {activeLesson.title}
                 </h3>
-                <p className="text-xs text-slate-400 leading-normal">
+                <p className="text-xs text-slate-600 leading-normal">
                   {activeLesson.summary || 'Summary placeholder text detailing vocabulary review.'}
                 </p>
               </div>
@@ -324,8 +325,8 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
                         />
                       ) : (
                         <div className="flex flex-col items-center justify-center p-8 gap-4 min-h-[200px]">
-                          <FileText className="w-10 h-10 text-slate-300" />
-                          <p className="text-xs text-slate-500">Preview not available for this file type.</p>
+                          <FileText className="w-10 h-10 text-slate-400" />
+                          <p className="text-xs text-slate-600">Preview not available for this file type.</p>
                           <a
                             href={publicUrl}
                             download
@@ -338,7 +339,7 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
 
                       {/* Completion button bar */}
                       <div className="px-4 py-3 border-t border-slate-200/40 flex justify-between items-center bg-white">
-                        <span className="text-[10px] text-slate-400 font-medium font-mono truncate max-w-[60%]">{activeLesson.filePath}</span>
+                        <span className="text-[10px] text-slate-600 font-medium font-mono truncate max-w-[60%]">{activeLesson.filePath}</span>
                         {lessonCompleted ? (
                           <span className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 animate-[scaleIn_0.2s_ease-out]">
                             <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Lesson Completed! +20 XP
@@ -357,11 +358,11 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
                 })() : (
                   // Locked Premium Warning Overlay Inside Viewer
                   <div className="w-full bg-slate-50 border border-slate-100 rounded-xl p-8 text-center space-y-4 py-12">
-                    <div className="w-16 h-16 bg-amber-50 border border-amber-200 text-amber-500 flex items-center justify-center rounded-2xl mx-auto shadow-sm">
+                    <div className="w-16 h-16 bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center rounded-2xl mx-auto shadow-sm">
                       <Lock className="w-8 h-8" />
                     </div>
-                    <h4 className="font-display font-extrabold text-slate-800 text-base">Premium Curriculum Lock</h4>
-                    <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                    <h3 className="font-display font-extrabold text-slate-800 text-base">Premium Curriculum Lock</h3>
+                    <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
                       Syllabus media documents and PDF files for premium courses are locked. Simulate a sandbox license checkout using the button above to unlock immediate access!
                     </p>
                   </div>

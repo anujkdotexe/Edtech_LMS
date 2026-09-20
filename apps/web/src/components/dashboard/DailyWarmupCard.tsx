@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Sparkles, CheckCircle2, Clock, AlertCircle, Globe } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -8,27 +8,28 @@ interface DailyWarmupCardProps {
   onCompleted?: (xpAwarded: number) => void;
 }
 
-const WARMUP_QUESTION = {
-  prompt: 'Choose the correct French translation for "The Book":',
-  options: [
-    { text: 'Le livre', isCorrect: true },
-    { text: 'La porte', isCorrect: false },
-    { text: 'La maison', isCorrect: false },
-    { text: 'Le stylo', isCorrect: false },
-  ],
-};
+interface WarmupChallenge {
+  challengeId: string;
+  language: string;
+  prompt: string;
+  options: string[];
+  completedToday: boolean;
+  xpReward: number;
+}
 
 export const DailyWarmupCard: React.FC<DailyWarmupCardProps> = ({
   initialCompleted = false,
   onCompleted,
 }) => {
   const { fetchProfile } = useAuthStore();
+  const [challenge, setChallenge] = useState<WarmupChallenge | null>(null);
   const [completed, setCompleted] = useState(initialCompleted);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [expired, setExpired] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetchingChallenge, setFetchingChallenge] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -37,7 +38,32 @@ export const DailyWarmupCard: React.FC<DailyWarmupCardProps> = ({
   }, [initialCompleted]);
 
   useEffect(() => {
-    if (completed || submitted || expired) return;
+    let mounted = true;
+    const fetchWarmup = async () => {
+      setFetchingChallenge(true);
+      try {
+        const data = await apiFetch<WarmupChallenge>('/api/profile/warmup');
+        if (mounted) {
+          setChallenge(data);
+          if (data.completedToday) {
+            setCompleted(true);
+          }
+        }
+      } catch (err: any) {
+        console.error('Failed to load daily warmup challenge:', err);
+      } finally {
+        if (mounted) setFetchingChallenge(false);
+      }
+    };
+
+    fetchWarmup();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (completed || submitted || expired || fetchingChallenge) return;
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -49,61 +75,78 @@ export const DailyWarmupCard: React.FC<DailyWarmupCardProps> = ({
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [completed, submitted, expired]);
+  }, [completed, submitted, expired, fetchingChallenge]);
 
-  const handleSelectOption = async (index: number) => {
-    if (submitted || completed || expired || loading) return;
-    setSelectedOption(index);
+  const handleSelectOption = async (optionText: string) => {
+    if (submitted || completed || expired || loading || !challenge) return;
+    setSelectedOption(optionText);
     setSubmitted(true);
-
-    const isCorrect = WARMUP_QUESTION.options[index].isCorrect;
-    if (!isCorrect) {
-      setErrorMsg('Incorrect translation! Try again tomorrow to keep your streak.');
-      return;
-    }
-
     setLoading(true);
+    setErrorMsg(null);
+
     try {
       const res = await apiFetch<{
         success: boolean;
         message: string;
         xpAwarded: number;
-      }>('/api/warmup/claim', {
+      }>('/api/profile/warmup/claim', {
         method: 'POST',
+        body: JSON.stringify({
+          challengeId: challenge.challengeId,
+          answer: optionText,
+        }),
       });
 
       setCompleted(true);
-      setSuccessMsg(res.message || 'Daily warmup completed! +25 XP earned.');
+      setSuccessMsg(res.message || `Daily warmup completed! +${challenge.xpReward || 25} XP earned.`);
       if (onCompleted) {
-        onCompleted(res.xpAwarded || 25);
+        onCompleted(res.xpAwarded || challenge.xpReward || 25);
       }
-      // Refresh profile to sync stats and XP
       await fetchProfile();
     } catch (err: any) {
-      if (err.status === 409 || err.message?.includes('already completed')) {
+      if (err.message?.toLowerCase().includes('already completed')) {
         setCompleted(true);
         setSuccessMsg('You have already completed your warmup for today!');
+      } else if (err.message?.toLowerCase().includes('incorrect answer')) {
+        setErrorMsg('Incorrect answer! Check back tomorrow to maintain your study streak.');
       } else {
-        setErrorMsg(err.message || 'Failed to claim warmup reward.');
+        setErrorMsg(err.message || 'Failed to submit daily warmup challenge.');
       }
     } finally {
       setLoading(false);
     }
   };
 
+  if (fetchingChallenge) {
+    return (
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div className="h-4 w-36 bg-slate-200 rounded-md" />
+          <div className="h-5 w-12 bg-slate-200 rounded-full" />
+        </div>
+        <div className="h-4 w-5/6 bg-slate-200 rounded-md" />
+        <div className="grid grid-cols-2 gap-2.5">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-10 bg-slate-100 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (completed) {
     return (
-      <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/10 border border-emerald-200/80 rounded-2xl p-5 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/10 border border-emerald-200/80 rounded-2xl p-5 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+          <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <h4 className="font-bold text-slate-800 text-sm">Daily Warmup Completed</h4>
-            <p className="text-xs text-slate-500">You earned +25 XP today. Come back tomorrow for more!</p>
+            <h4 className="font-bold text-slate-900 text-sm">Daily Warmup Completed</h4>
+            <p className="text-xs text-slate-600">Streak updated! Check back tomorrow for a new vocabulary puzzle.</p>
           </div>
         </div>
-        <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">
+        <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold shrink-0">
           +25 XP
         </span>
       </div>
@@ -113,64 +156,69 @@ export const DailyWarmupCard: React.FC<DailyWarmupCardProps> = ({
   return (
     <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-indigo-600">
-          <Sparkles className="w-4 h-4 fill-indigo-600" />
+        <div className="flex items-center gap-2 text-indigo-700">
+          <Sparkles className="w-4 h-4 fill-indigo-700" />
           <h4 className="font-bold text-slate-900 text-sm">Daily Vocab Warmup</h4>
-          <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-extrabold uppercase">
-            +25 XP
-          </span>
+          {challenge?.language && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-bold">
+              <Globe className="w-3 h-3" />
+              {challenge.language}
+            </span>
+          )}
         </div>
         {!expired && !submitted && (
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200/60">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200/60">
             <Clock className="w-3.5 h-3.5" />
             <span>{timeLeft}s</span>
           </div>
         )}
       </div>
 
-      <p className="text-sm font-semibold text-slate-800">{WARMUP_QUESTION.prompt}</p>
+      <p className="text-sm font-semibold text-slate-800">
+        {challenge?.prompt || 'Loading challenge...'}
+      </p>
 
       <div className="grid grid-cols-2 gap-2.5">
-        {WARMUP_QUESTION.options.map((option, idx) => {
+        {(challenge?.options || []).map((option) => {
           let btnClass = 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700';
           if (submitted) {
-            if (option.isCorrect) {
-              btnClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 font-bold';
-            } else if (selectedOption === idx) {
-              btnClass = 'bg-rose-50 border-rose-300 text-rose-700 font-bold';
+            if (selectedOption === option) {
+              btnClass = errorMsg
+                ? 'bg-rose-50 border-rose-300 text-rose-700 font-bold'
+                : 'bg-emerald-50 border-emerald-400 text-emerald-800 font-bold';
             }
           }
 
           return (
             <button
-              key={option.text}
+              key={option}
               disabled={submitted || expired || loading}
-              onClick={() => handleSelectOption(idx)}
+              onClick={() => handleSelectOption(option)}
               className={`p-3 rounded-xl border text-xs font-medium text-left transition ${btnClass}`}
             >
-              {option.text}
+              {option}
             </button>
           );
         })}
       </div>
 
       {expired && (
-        <div className="flex items-center gap-2 text-xs text-rose-600 bg-rose-50 p-2.5 rounded-xl">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>Time expired! Check back tomorrow for a new warmup challenge.</span>
+        <div className="flex items-center gap-2 text-xs text-rose-700 bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+          <span>Time expired! A new vocabulary challenge unlocks tomorrow.</span>
         </div>
       )}
 
       {errorMsg && (
-        <div className="flex items-center gap-2 text-xs text-rose-600 bg-rose-50 p-2.5 rounded-xl">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+        <div className="flex items-center gap-2 text-xs text-rose-700 bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {successMsg && (
-        <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 p-2.5 rounded-xl">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
           <span>{successMsg}</span>
         </div>
       )}

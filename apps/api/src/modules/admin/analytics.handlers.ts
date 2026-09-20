@@ -1,6 +1,6 @@
 // Rule: No emojis in source code. Use plain text labels like [OK], [ERROR], [INFO], [WARN].
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { sql, count, sum, eq, avg, inArray } from 'drizzle-orm';
+import { sql, count, sum, eq, avg, inArray, and } from 'drizzle-orm';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 
@@ -107,11 +107,11 @@ export const getCourseAnalyticsHandler = async (request: FastifyRequest, reply: 
       .where(eq(schema.modules.courseId, courseId))
       .orderBy(schema.lessons.orderIndex);
 
-    // Calculate total enrolled students for this course
+    // Calculate total enrolled students for this course (successful orders only)
     const [enrolledResult] = await db
       .select({ enrolledCount: count() })
       .from(schema.orders)
-      .where(eq(schema.orders.courseId, courseId));
+      .where(and(eq(schema.orders.courseId, courseId), eq(schema.orders.status, 'SUCCESS')));
 
     const enrolledCount = enrolledResult ? Number(enrolledResult.enrolledCount) : 0;
 

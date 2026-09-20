@@ -144,24 +144,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         body: JSON.stringify(credentials),
       });
 
-      set((state) => ({
-        user: {
-          ...authProfile,
-          stats: state.user?.stats || {
-            totalXp: 0,
-            level: 1,
-            xpInLevel: 0,
-            xpNeededForNextLevel: 250,
-            progressPercent: 0,
-            currentStreak: 0,
-            longestStreak: 0,
-            lastActiveDate: null,
+      try {
+        const fullProfile = await apiFetch<UserProfile>('/api/profile');
+        set({ user: fullProfile, isAuthenticated: true, isLoading: false });
+      } catch {
+        set({
+          user: {
+            ...authProfile,
+            stats: {
+              totalXp: 0,
+              level: 1,
+              xpInLevel: 0,
+              xpNeededForNextLevel: 250,
+              progressPercent: 0,
+              currentStreak: 0,
+              longestStreak: 0,
+              lastActiveDate: null,
+              warmupCompletedToday: false,
+            },
+            badges: [],
+            activityFeed: [],
+            purchaseHistory: [],
+            quizHistory: [],
           },
-          badges: state.user?.badges || [],
-        },
-        isAuthenticated: true,
-        isLoading: false,
-      }));
+          isAuthenticated: true,
+          isLoading: false,
+        });
+      }
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
       throw err;
@@ -176,27 +185,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         body: JSON.stringify(userData),
       });
 
-      set({
-        user: {
-          ...authProfile,
-          stats: {
-            totalXp: 0,
-            level: 1,
-            xpInLevel: 0,
-            xpNeededForNextLevel: 250,
-            progressPercent: 0,
-            currentStreak: 0,
-            longestStreak: 0,
-            lastActiveDate: null,
+      try {
+        const fullProfile = await apiFetch<UserProfile>('/api/profile');
+        set({ user: fullProfile, isAuthenticated: true, isLoading: false });
+      } catch {
+        set({
+          user: {
+            ...authProfile,
+            stats: {
+              totalXp: 0,
+              level: 1,
+              xpInLevel: 0,
+              xpNeededForNextLevel: 250,
+              progressPercent: 0,
+              currentStreak: 0,
+              longestStreak: 0,
+              lastActiveDate: null,
+              warmupCompletedToday: false,
+            },
+            badges: [],
+            activityFeed: [],
+            purchaseHistory: [],
+            quizHistory: [],
           },
-          badges: [],
-          activityFeed: [],
-          purchaseHistory: [],
-          quizHistory: [],
-        },
-        isAuthenticated: true,
-        isLoading: false,
-      });
+          isAuthenticated: true,
+          isLoading: false,
+        });
+      }
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
       throw err;
@@ -211,24 +226,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         body: JSON.stringify(userData),
       });
 
-      set((state) => ({
-        user: {
-          ...authProfile,
-          stats: state.user?.stats || {
-            totalXp: 0,
-            level: 1,
-            xpInLevel: 0,
-            xpNeededForNextLevel: 250,
-            progressPercent: 0,
-            currentStreak: 0,
-            longestStreak: 0,
-            lastActiveDate: null,
+      try {
+        const fullProfile = await apiFetch<UserProfile>('/api/profile');
+        set({ user: fullProfile, isAuthenticated: true, isLoading: false });
+      } catch {
+        set({
+          user: {
+            ...authProfile,
+            stats: {
+              totalXp: 0,
+              level: 1,
+              xpInLevel: 0,
+              xpNeededForNextLevel: 250,
+              progressPercent: 0,
+              currentStreak: 0,
+              longestStreak: 0,
+              lastActiveDate: null,
+              warmupCompletedToday: false,
+            },
+            badges: [],
+            activityFeed: [],
+            purchaseHistory: [],
+            quizHistory: [],
           },
-          badges: state.user?.badges || [],
-        },
-        isAuthenticated: true,
-        isLoading: false,
-      }));
+          isAuthenticated: true,
+          isLoading: false,
+        });
+      }
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
       throw err;
@@ -250,7 +274,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       await apiFetch('/api/dev/unimpersonate', { method: 'POST' });
-      await get().checkSession();
+      set({ user: null });
+      await get().fetchProfile();
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
     }

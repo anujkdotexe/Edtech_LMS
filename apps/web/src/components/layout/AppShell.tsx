@@ -18,20 +18,28 @@ interface AppShellProps {
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isAuthenticated, isLoading, fetchProfile } = useAuthStore();
+  const { user, isAuthenticated, isLoading, fetchProfile, checkSession } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+    const isPublicRoute = pathname === '/login' || pathname.startsWith('/reset-password');
+    if (!isPublicRoute) {
+      checkSession().then((me) => {
+        if (me) {
+          fetchProfile();
+        }
+      });
+    }
+  }, [checkSession, fetchProfile, pathname]);
 
   // Auth & Client-side Route Guard
   useEffect(() => {
     if (!isLoading) {
-      if (!isAuthenticated && pathname !== '/login') {
+      const isPublicRoute = pathname === '/login' || pathname.startsWith('/reset-password');
+      if (!isAuthenticated && !isPublicRoute) {
         router.push('/login');
       } else if (isAuthenticated) {
-        if (pathname === '/login') {
+        if (pathname === '/login' || pathname.startsWith('/reset-password')) {
           router.push('/');
         } else {
           const role = user?.role || 'STUDENT';
@@ -75,7 +83,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             ))}
           </div>
         </main>
-        <footer className="bg-slate-50 border-t border-slate-200/50 py-5 text-center text-slate-400 text-xs">
+        <footer className="bg-slate-50 border-t border-slate-200/50 py-5 text-center text-slate-600 text-xs">
           <p>&copy; 2026 Antigravity LMS &bull; Loading...</p>
         </footer>
       </div>
@@ -123,13 +131,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
           {/* Student Mobile Sub-Nav */}
           {isAuthenticated && pathname !== '/login' && !isAdminOrDev && (
-            <nav className="md:hidden sticky top-14 w-full bg-white border-b border-slate-100 flex justify-around py-2 z-30 text-slate-500 font-semibold text-xs shadow-sm">
+            <nav aria-label="Mobile Navigation" className="md:hidden sticky top-14 w-full bg-white border-b border-slate-100 flex justify-around py-2 z-30 text-slate-500 font-semibold text-xs shadow-sm">
               {studentNavLinks.map((link) => (
                 <Link
                   key={link.path}
                   href={link.path}
                   className={`flex flex-col items-center gap-0.5 px-4 py-1 ${
-                    pathname === link.path ? 'text-primary' : 'text-slate-400'
+                    pathname === link.path ? 'text-primary' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {link.icon}
@@ -143,7 +151,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             {children}
           </main>
 
-          <footer className="bg-white border-t border-slate-100 py-6 text-center text-slate-400 text-xs">
+          <footer className="bg-white border-t border-slate-100 py-6 text-center text-slate-600 text-xs">
             <p>&copy; 2026 Antigravity LMS &bull; Clean MVC &amp; Microlithic Architecture</p>
           </footer>
         </>

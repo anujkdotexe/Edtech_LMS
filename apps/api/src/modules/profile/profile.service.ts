@@ -6,7 +6,88 @@ import { FullProfileResponse, UserBadgeInfo, ActivityFeedItem } from './profile.
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 
+export interface WarmupChallengeDefinition {
+  id: string;
+  language: string;
+  prompt: string;
+  options: string[];
+  correctAnswer: string;
+}
+
+export const WARMUP_CHALLENGES: Record<string, WarmupChallengeDefinition> = {
+  vocab_fr_book: {
+    id: 'vocab_fr_book',
+    language: 'French',
+    prompt: 'Choose the correct French translation for "The Book":',
+    options: ['Le livre', 'La porte', 'La maison', 'Le stylo'],
+    correctAnswer: 'Le livre',
+  },
+  vocab_es_water: {
+    id: 'vocab_es_water',
+    language: 'Spanish',
+    prompt: 'Choose the correct Spanish translation for "Water":',
+    options: ['El agua', 'El fuego', 'El pan', 'La leche'],
+    correctAnswer: 'El agua',
+  },
+  vocab_de_apple: {
+    id: 'vocab_de_apple',
+    language: 'German',
+    prompt: 'Choose the correct German translation for "The Apple":',
+    options: ['Der Apfel', 'Die Banane', 'Das Brot', 'Das Wasser'],
+    correctAnswer: 'Der Apfel',
+  },
+  vocab_fr_morning: {
+    id: 'vocab_fr_morning',
+    language: 'French',
+    prompt: 'How do you greet someone in the morning in French?',
+    options: ['Bonjour', 'Bonne nuit', 'Au revoir', "S'il vous plaît"],
+    correctAnswer: 'Bonjour',
+  },
+  vocab_es_house: {
+    id: 'vocab_es_house',
+    language: 'Spanish',
+    prompt: 'Choose the correct Spanish translation for "The House":',
+    options: ['La casa', 'La mesa', 'La silla', 'El coche'],
+    correctAnswer: 'La casa',
+  },
+  vocab_de_cat: {
+    id: 'vocab_de_cat',
+    language: 'German',
+    prompt: 'Choose the correct German translation for "The Cat":',
+    options: ['Die Katze', 'Der Hund', 'Das Pferd', 'Die Maus'],
+    correctAnswer: 'Die Katze',
+  },
+  vocab_it_coffee: {
+    id: 'vocab_it_coffee',
+    language: 'Italian',
+    prompt: 'Choose the correct Italian translation for "The Coffee":',
+    options: ['Il caffè', 'Il tè', 'Il vino', 'La pizza'],
+    correctAnswer: 'Il caffè',
+  },
+};
+
 export class ProfileService {
+  static async getDailyWarmup(userId: string) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const completedToday = await ProfileRepository.checkWarmupCompletedToday(userId, todayStr);
+
+    const keys = Object.keys(WARMUP_CHALLENGES);
+    let hash = 0;
+    for (let i = 0; i < todayStr.length; i++) {
+      hash = (hash * 31 + todayStr.charCodeAt(i)) % keys.length;
+    }
+    const challengeKey = keys[Math.abs(hash) % keys.length];
+    const challenge = WARMUP_CHALLENGES[challengeKey];
+
+    return {
+      challengeId: challenge.id,
+      language: challenge.language,
+      prompt: challenge.prompt,
+      options: challenge.options,
+      completedToday,
+      xpReward: 25,
+    };
+  }
   static async getFullProfile(userId: string, requestedLocale = 'en'): Promise<FullProfileResponse> {
     const user = await ProfileRepository.findUserById(userId);
     if (!user) {
@@ -100,7 +181,24 @@ export class ProfileService {
     };
   }
 
-  static async claimDailyWarmup(userId: string, ip?: string) {
+  static async claimDailyWarmup(
+    userId: string,
+    challenge?: { challengeId?: string; answer?: string },
+    ip?: string
+  ) {
+    if (!challenge || !challenge.challengeId || !challenge.answer) {
+      throw new ValidationError('Daily warmup challenge ID and answer are required');
+    }
+
+    const definedChallenge = WARMUP_CHALLENGES[challenge.challengeId];
+    if (!definedChallenge) {
+      throw new ValidationError('Invalid daily warmup challenge ID');
+    }
+
+    if (challenge.answer.trim().toLowerCase() !== definedChallenge.correctAnswer.toLowerCase()) {
+      throw new ValidationError('Incorrect answer for daily warmup challenge');
+    }
+
     const todayStr = new Date().toISOString().split('T')[0];
     const result = await ProfileRepository.claimDailyWarmupTx(userId, todayStr, 25);
 

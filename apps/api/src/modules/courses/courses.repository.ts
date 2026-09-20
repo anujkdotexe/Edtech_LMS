@@ -1,4 +1,4 @@
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 import { updateStreakInTx } from '../../utils/streaks';
@@ -95,58 +95,57 @@ export class CoursesRepository {
 
   static async completeLessonInTx(userId: string, lessonId: string) {
     return await db.transaction(async (tx) => {
-      // 1. Check if already completed
-      const existing = await tx
-        .select()
-        .from(schema.lessonCompletions)
-        .where(
-          and(
-            eq(schema.lessonCompletions.userId, userId),
-            eq(schema.lessonCompletions.lessonId, lessonId)
-          )
-        )
-        .limit(1);
+      // 1. Atomic idempotent insert with conflict handling
+      const inserted = await tx
+        .insert(schema.lessonCompletions)
+        .values({
+          userId,
+          lessonId,
+          completedAt: new Date(),
+        })
+        .onConflictDoNothing({
+          target: [schema.lessonCompletions.userId, schema.lessonCompletions.lessonId],
+        })
+        .returning();
 
-      if (existing.length > 0) {
+      if (inserted.length === 0) {
         return { alreadyCompleted: true };
       }
 
-      // 2. Insert completion
-      await tx.insert(schema.lessonCompletions).values({
-        userId,
-        lessonId,
-        completedAt: new Date(),
-      });
+      // 2. Atomic XP increment
+      const xpUpsert = await tx
+        .insert(schema.userXp)
+        .values({
+          userId,
+          totalXp: 15,
+          level: 1,
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: schema.userXp.userId,
+          set: {
+            totalXp: sql`${schema.userXp.totalXp} + 15`,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
 
-      // 3. Award XP (+15 XP)
-      const currentXpRows = await tx
-        .select()
-        .from(schema.userXp)
-        .where(eq(schema.userXp.userId, userId))
-        .limit(1);
-
-      const oldXp = currentXpRows.length > 0 ? currentXpRows[0].totalXp : 0;
-      const newTotalXp = oldXp + 15;
+      const newTotalXp = xpUpsert[0].totalXp;
+      const oldXp = newTotalXp - 15;
       const { level: newLevel } = calculateLevelStats(newTotalXp);
       const { didLevelUp } = didUserLevelUp(oldXp, newTotalXp);
 
-      if (currentXpRows.length > 0) {
+      if (xpUpsert[0].level !== newLevel) {
         await tx
           .update(schema.userXp)
-          .set({ totalXp: newTotalXp, level: newLevel, updatedAt: new Date() })
+          .set({ level: newLevel })
           .where(eq(schema.userXp.userId, userId));
-      } else {
-        await tx.insert(schema.userXp).values({
-          userId,
-          totalXp: newTotalXp,
-          level: newLevel,
-        });
       }
 
-      // 4. Update streak
+      // 3. Update streak
       const streakResult = await updateStreakInTx(tx, userId);
 
-      // 5. Check badges
+      // 4. Check badges
       const newBadges = await checkAndAwardBadges(tx, userId, {
         streak: streakResult.currentStreak,
         newLevel,

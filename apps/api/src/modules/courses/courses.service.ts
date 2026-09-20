@@ -18,7 +18,10 @@ export class CoursesService {
       userOrders = await CoursesRepository.findUserSuccessfulOrders(currentUser.userId);
     }
 
-    return allCourses.map((course) => {
+    const isAdminOrDev = currentUser !== null && ['ADMIN', 'DEVELOPER'].includes(currentUser.role);
+    const visibleCourses = isAdminOrDev ? allCourses : allCourses.filter((c) => c.isPublished);
+
+    return visibleCourses.map((course) => {
       let trans = translations.find((t) => t.courseId === course.id && t.locale === requestedLocale);
       if (!trans) {
         trans = translations.find((t) => t.courseId === course.id && t.locale === 'en');
@@ -28,7 +31,7 @@ export class CoursesService {
       const isUnlocked =
         !course.isPremium ||
         hasPurchased ||
-        (currentUser !== null && ['ADMIN', 'DEVELOPER'].includes(currentUser.role));
+        isAdminOrDev;
 
       return {
         id: course.id,
@@ -159,13 +162,49 @@ export class CoursesService {
     };
   }
 
-  static async completeLesson(lessonId: string, userId: string) {
+  static async completeLesson(
+    lessonId: string,
+    user: { userId: string; role: string; impersonatedBy?: string }
+  ) {
     const lesson = await CoursesRepository.findLessonById(lessonId);
     if (!lesson) {
       throw new NotFoundError('Lesson not found');
     }
 
-    const result = await CoursesRepository.completeLessonInTx(userId, lessonId);
+    // Verify course entitlement server-side
+    const isAdminOrDev = ['ADMIN', 'DEVELOPER'].includes(user.role);
+    if (!lesson.isFreePreview && !isAdminOrDev) {
+      const [module] = await db
+        .select()
+        .from(schema.modules)
+        .where(eq(schema.modules.id, lesson.moduleId))
+        .limit(1);
+
+      if (!module) {
+        throw new NotFoundError('Course module not found');
+      }
+
+      const course = await CoursesRepository.findCourseById(module.courseId);
+      if (course && course.isPremium) {
+        const orders = await db
+          .select()
+          .from(schema.orders)
+          .where(
+            and(
+              eq(schema.orders.userId, user.userId),
+              eq(schema.orders.courseId, course.id),
+              eq(schema.orders.status, 'SUCCESS')
+            )
+          )
+          .limit(1);
+
+        if (orders.length === 0) {
+          throw new ForbiddenError('You do not have access to this course');
+        }
+      }
+    }
+
+    const result = await CoursesRepository.completeLessonInTx(user.userId, lessonId);
     if (result.alreadyCompleted) {
       return {
         success: true,

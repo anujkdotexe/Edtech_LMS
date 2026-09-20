@@ -43,13 +43,22 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isAuthenticated) {
+      fetchProfile();
+    }
+  }, [isAuthenticated, fetchProfile]);
+
+  useEffect(() => {
     if (user) {
       setName(user.name);
       if (user.avatarUrl) {
-        // Extract seed from URL if present
-        const urlParams = new URL(user.avatarUrl);
-        const seedParam = urlParams.searchParams.get('seed') || 'felix';
-        setSelectedAvatar(seedParam);
+        try {
+          const urlParams = new URL(user.avatarUrl);
+          const seedParam = urlParams.searchParams.get('seed') || 'felix';
+          setSelectedAvatar(seedParam);
+        } catch {
+          setSelectedAvatar('felix');
+        }
       } else {
         setSelectedAvatar('felix');
       }
@@ -138,6 +147,8 @@ export default function ProfilePage() {
               <img 
                 src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${selectedAvatar}`} 
                 alt="Avatar" 
+                width="96"
+                height="96"
                 className="w-full h-full object-cover" 
               />
             </div>
@@ -356,7 +367,7 @@ export default function ProfilePage() {
                         }`}
                         title={seed.name}
                       >
-                        <img src={avatarUrl} alt={seed.name} className="w-full h-full object-cover" />
+                        <img src={avatarUrl} alt={seed.name} width="48" height="48" className="w-full h-full object-cover" />
                         {isSelected && (
                           <div className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-primary flex items-center justify-center text-white p-0.5">
                             <CheckCircle2 className="w-2.5 h-2.5 fill-white text-primary" />

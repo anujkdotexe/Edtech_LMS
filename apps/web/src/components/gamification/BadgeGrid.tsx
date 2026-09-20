@@ -31,7 +31,7 @@ export const BadgeGrid: React.FC<BadgeGridProps> = ({ unlockedBadges, className 
             className={`p-3 rounded-2xl border flex flex-col items-center text-center transition ${
               isUnlocked
                 ? 'bg-white border-primary/20 shadow-sm hover:shadow-md'
-                : 'bg-slate-50 border-slate-200/60 opacity-60'
+                : 'bg-slate-50 border-slate-200'
             }`}
             title={badge.description}
           >
@@ -39,13 +39,15 @@ export const BadgeGrid: React.FC<BadgeGridProps> = ({ unlockedBadges, className 
               className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
                 isUnlocked
                   ? 'bg-primary/10 text-primary'
-                  : 'bg-slate-200 text-slate-400'
+                  : 'bg-slate-200/70 text-slate-600'
               }`}
             >
               {isUnlocked ? <Award className="w-5 h-5" /> : <Lock className="w-4 h-4" />}
             </div>
-            <span className="font-bold text-xs text-slate-800 line-clamp-1">{badge.name}</span>
-            <span className="text-[10px] text-slate-500 line-clamp-2 mt-0.5 leading-tight">
+            <span className={`font-bold text-xs line-clamp-1 ${isUnlocked ? 'text-slate-900' : 'text-slate-700'}`}>
+              {badge.name}
+            </span>
+            <span className="text-[11px] text-slate-600 line-clamp-2 mt-0.5 leading-tight">
               {isUnlocked && unlockedData?.unlockedAt
                 ? `Earned ${new Date(unlockedData.unlockedAt).toLocaleDateString()}`
                 : badge.description}

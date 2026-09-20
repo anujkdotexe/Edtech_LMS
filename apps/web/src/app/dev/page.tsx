@@ -157,7 +157,7 @@ export default function DevConsolePage() {
     try {
       await apiFetch('/api/dev/impersonate', {
         method: 'POST',
-        body: JSON.stringify({ studentEmail: email }),
+        body: JSON.stringify({ studentEmail: email, email }),
       });
       setSuccessMsg(`Takeover successful! Switch active session email: ${email}`);
       
@@ -751,13 +751,22 @@ export default function DevConsolePage() {
               <div className={`flex items-center gap-3 p-4 rounded-xl border font-bold ${
                 reconciliation.reconciliationStatus === 'RECONCILED'
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  : reconciliation.reconciliationStatus === 'GATEWAY_UNAVAILABLE'
+                  ? 'bg-slate-100 border-slate-300 text-slate-700'
                   : 'bg-amber-50 border-amber-200 text-amber-700'
               }`}>
-                {reconciliation.reconciliationStatus === 'RECONCILED'
-                  ? <CheckCircle2 className="w-5 h-5" />
-                  : <AlertCircle className="w-5 h-5" />
-                }
-                <span className="text-sm">{reconciliation.reconciliationStatus === 'RECONCILED' ? 'All payments reconciled successfully.' : 'Variance detected between DB and gateway.'}</span>
+                {reconciliation.reconciliationStatus === 'RECONCILED' ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-slate-500" />
+                )}
+                <span className="text-sm">
+                  {reconciliation.reconciliationStatus === 'RECONCILED'
+                    ? 'All payments reconciled successfully.'
+                    : reconciliation.reconciliationStatus === 'GATEWAY_UNAVAILABLE'
+                    ? (reconciliation.message || 'Payment gateway credentials not configured (STRIPE_SECRET_KEY missing). Gateway reconciliation unavailable.')
+                    : 'Variance detected between DB and gateway.'}
+                </span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

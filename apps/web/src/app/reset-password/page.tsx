@@ -37,7 +37,7 @@ export default function ResetPasswordPage() {
     try {
       await apiFetch('/api/auth/reset-password', {
         method: 'POST',
-        body: JSON.stringify({ token, newPassword: password }),
+        body: JSON.stringify({ token, newPassword: password, password }),
       });
       
       setSuccess(true);

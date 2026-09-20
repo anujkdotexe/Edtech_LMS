@@ -10,14 +10,15 @@ export class DevController {
       return reply.status(403).send({ statusCode: 403, error: 'Forbidden', message: 'Only developers can utilize impersonation tools' });
     }
 
-    const { studentEmail } = request.body as { studentEmail?: string };
-    if (!studentEmail) {
+    const body = request.body as { studentEmail?: string; email?: string } | undefined;
+    const targetEmail = body?.studentEmail || body?.email;
+    if (!targetEmail) {
       return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: 'Target student email is required' });
     }
 
     try {
       const { impersonating, impersonationToken } = await DevService.impersonate(
-        studentEmail,
+        targetEmail,
         request.user.userId,
         request.ip
       );
