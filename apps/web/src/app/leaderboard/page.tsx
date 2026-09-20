@@ -131,7 +131,7 @@ export default function LeaderboardPage() {
               <div className="w-16 h-16 rounded-full border-2 border-slate-300 relative overflow-hidden bg-slate-100 mb-3 shadow-md group-hover:scale-105 transition">
                 {secondPlace.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={secondPlace.avatarUrl} alt={secondPlace.name} className="w-full h-full object-cover" />
+                  <img src={secondPlace.avatarUrl} alt={secondPlace.name} width="64" height="64" className="w-full h-full object-cover" />
                 ) : (
                   <User className="w-8 h-8 text-slate-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                 )}
@@ -162,7 +162,7 @@ export default function LeaderboardPage() {
               <div className="w-20 h-20 rounded-full border-4 border-amber-400 relative overflow-hidden bg-slate-100 mb-3 shadow-premium group-hover:scale-105 transition ring-4 ring-amber-100">
                 {firstPlace.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={firstPlace.avatarUrl} alt={firstPlace.name} className="w-full h-full object-cover" />
+                  <img src={firstPlace.avatarUrl} alt={firstPlace.name} width="80" height="80" className="w-full h-full object-cover" />
                 ) : (
                   <User className="w-10 h-10 text-slate-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                 )}
@@ -191,7 +191,7 @@ export default function LeaderboardPage() {
               <div className="w-16 h-16 rounded-full border-2 border-amber-600/30 relative overflow-hidden bg-slate-100 mb-3 shadow-md group-hover:scale-105 transition">
                 {thirdPlace.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={thirdPlace.avatarUrl} alt={thirdPlace.name} className="w-full h-full object-cover" />
+                  <img src={thirdPlace.avatarUrl} alt={thirdPlace.name} width="64" height="64" className="w-full h-full object-cover" />
                 ) : (
                   <User className="w-8 h-8 text-slate-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                 )}
@@ -256,7 +256,7 @@ export default function LeaderboardPage() {
                         <div className="w-8 h-8 rounded-full border relative overflow-hidden bg-slate-100 shrink-0">
                           {student.avatarUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
+                            <img src={student.avatarUrl} alt={student.name} width="32" height="32" className="w-full h-full object-cover" />
                           ) : (
                             <User className="w-4.5 h-4.5 text-slate-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                           )}

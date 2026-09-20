@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useAuthStore } from '../../../../store/useAuthStore';
 import { apiFetch } from '../../../../lib/api';
 import Link from 'next/link';
 import { 
-  ArrowLeft, Plus, Pencil, Trash2, GripVertical, FileText, Upload, Save, X, Eye, EyeOff 
+  ArrowLeft, Plus, Pencil, Trash2, GripVertical, FileText, Upload, Save, X, Eye, EyeOff,
+  ChevronUp, ChevronDown 
 } from 'lucide-react';
 
 interface Lesson {
@@ -36,8 +37,10 @@ interface CourseDetails {
   modules: Module[];
 }
 
-export default function AdminCourseEditor({ params }: { params: { id: string } }) {
+export default function AdminCourseEditor({ params }: { params?: { id?: string } }) {
   const router = useRouter();
+  const routeParams = useParams();
+  const courseId = (routeParams?.id as string) || params?.id;
   const { user, isAuthenticated } = useAuthStore();
   const [course, setCourse] = useState<CourseDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,15 +55,16 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
   const [uploadingLessonId, setUploadingLessonId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated && ['ADMIN', 'DEVELOPER'].includes(user?.role || '')) {
-      loadCourse();
+    if (isAuthenticated && ['ADMIN', 'DEVELOPER'].includes(user?.role || '') && courseId && courseId !== 'undefined') {
+      loadCourse(courseId);
     }
-  }, [isAuthenticated, user, params.id]);
+  }, [isAuthenticated, user, courseId]);
 
-  const loadCourse = async () => {
+  const loadCourse = async (id: string) => {
+    if (!id || id === 'undefined') return;
     setLoading(true);
     try {
-      const data = await apiFetch<CourseDetails>(`/api/courses/${params.id}`);
+      const data = await apiFetch<CourseDetails>(`/api/courses/${id}`);
       setCourse(data);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to load course details');
@@ -70,15 +74,15 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
   };
 
   const handleTogglePublish = async () => {
-    if (!course) return;
+    if (!course || !courseId) return;
     try {
-      await apiFetch(`/api/courses/${params.id}`, {
+      await apiFetch(`/api/courses/${courseId}`, {
         method: 'PUT',
         body: JSON.stringify({ isPublished: !course.isPublished }),
       });
-      loadCourse();
+      loadCourse(courseId);
     } catch (err: any) {
-      alert(err.message || 'Could not update publication state');
+      alert(err.message || 'Error updating status');
     }
   };
 
@@ -86,7 +90,7 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
     e.preventDefault();
     try {
       if (moduleModal.mode === 'CREATE') {
-        await apiFetch(`/api/admin/courses/${params.id}/modules`, {
+        await apiFetch(`/api/admin/courses/${courseId}/modules`, {
           method: 'POST',
           body: JSON.stringify({ title: moduleModal.title }),
         });
@@ -97,7 +101,7 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
         });
       }
       setModuleModal({ ...moduleModal, isOpen: false });
-      loadCourse();
+      if (courseId) loadCourse(courseId);
     } catch (err: any) {
       alert(err.message || 'Could not save module');
     }
@@ -107,7 +111,7 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
     if (!confirm('Are you sure you want to delete this module and all its lessons?')) return;
     try {
       await apiFetch(`/api/admin/modules/${moduleId}`, { method: 'DELETE' });
-      loadCourse();
+      if (courseId) loadCourse(courseId);
     } catch (err: any) {
       alert(err.message || 'Could not delete module');
     }
@@ -128,7 +132,7 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
         });
       }
       setLessonModal({ ...lessonModal, isOpen: false });
-      loadCourse();
+      if (courseId) loadCourse(courseId);
     } catch (err: any) {
       alert(err.message || 'Could not save lesson');
     }
@@ -138,7 +142,7 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
     if (!confirm('Are you sure you want to delete this lesson?')) return;
     try {
       await apiFetch(`/api/admin/lessons/${lessonId}`, { method: 'DELETE' });
-      loadCourse();
+      if (courseId) loadCourse(courseId);
     } catch (err: any) {
       alert(err.message || 'Could not delete lesson');
     }
@@ -156,11 +160,41 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
         body: formData,
       });
       
-      loadCourse();
+      if (courseId) loadCourse(courseId);
     } catch (err: any) {
       alert(err.message || 'Upload failed');
     } finally {
       setUploadingLessonId(null);
+    }
+  };
+
+  const handleMoveLesson = async (moduleId: string, lessonIndex: number, direction: 'UP' | 'DOWN') => {
+    if (!course) return;
+    const targetModule = course.modules.find((m) => m.id === moduleId);
+    if (!targetModule) return;
+
+    const targetIndex = direction === 'UP' ? lessonIndex - 1 : lessonIndex + 1;
+    if (targetIndex < 0 || targetIndex >= targetModule.lessons.length) return;
+
+    const reorderedLessons = [...targetModule.lessons];
+    const [moved] = reorderedLessons.splice(lessonIndex, 1);
+    reorderedLessons.splice(targetIndex, 0, moved);
+
+    const orderedLessonIds = reorderedLessons.map((l) => l.id);
+
+    setCourse({
+      ...course,
+      modules: course.modules.map((m) => (m.id === moduleId ? { ...m, lessons: reorderedLessons } : m)),
+    });
+
+    try {
+      await apiFetch(`/api/admin/modules/${moduleId}/lessons/reorder`, {
+        method: 'PUT',
+        body: JSON.stringify({ orderedLessonIds }),
+      });
+    } catch (err: any) {
+      alert(err.message || 'Failed to reorder lessons');
+      loadCourse(course.id);
     }
   };
 
@@ -258,10 +292,30 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
                 {module.lessons.length === 0 ? (
                   <p className="text-xs text-slate-400 text-center py-4">No lessons in this module.</p>
                 ) : (
-                  module.lessons.map((lesson) => (
+                  module.lessons.map((lesson, idx) => (
                     <div key={lesson.id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl border border-transparent hover:border-slate-100 transition group">
                       <div className="flex items-center gap-3">
-                        <FileText className="w-4 h-4 text-slate-400" />
+                        <div className="flex flex-col gap-0.5 opacity-60 group-hover:opacity-100 transition">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveLesson(module.id, idx, 'UP')}
+                            disabled={idx === 0}
+                            title="Move Up"
+                            className="p-0.5 hover:text-primary text-slate-400 disabled:opacity-20 transition"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveLesson(module.id, idx, 'DOWN')}
+                            disabled={idx === module.lessons.length - 1}
+                            title="Move Down"
+                            className="p-0.5 hover:text-primary text-slate-400 disabled:opacity-20 transition"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <FileText className="w-4 h-4 text-slate-400 shrink-0" />
                         <div>
                           <p className="text-sm font-semibold text-slate-700">{lesson.title}</p>
                           {lesson.filePath && (

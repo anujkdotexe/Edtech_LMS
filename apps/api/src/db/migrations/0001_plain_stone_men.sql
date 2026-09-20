@@ -1,3 +1,4 @@
+ALTER TYPE "public"."order_status" ADD VALUE IF NOT EXISTS 'REFUNDED';--> statement-breakpoint
 CREATE TABLE "daily_warmup_completions" (
 	"user_id" uuid NOT NULL,
 	"completed_date" date NOT NULL,

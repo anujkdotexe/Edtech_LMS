@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '../../store/useAuthStore';
 import { apiFetch } from '../../lib/api';
 import { Sparkles, Mail, Lock, User, UserPlus, LogIn, Check, Zap, AlertCircle } from 'lucide-react';
@@ -23,6 +23,8 @@ const AVATAR_OPTIONS = [
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
   const { login, signup, googleLogin, error, clearError } = useAuthStore();
   
   const [loading, setLoading] = useState(false);
@@ -48,12 +50,31 @@ export default function LoginPage() {
     clearError();
   };
 
+  const navigateAfterAuth = () => {
+    const { user } = useAuthStore.getState();
+    if (user?.forcePasswordReset) {
+      router.push('/reset-password?forced=true');
+      return;
+    }
+    if (redirectUrl) {
+      router.push(redirectUrl);
+      return;
+    }
+    if (user?.role === 'ADMIN') {
+      router.push('/admin');
+    } else if (user?.role === 'DEVELOPER') {
+      router.push('/dev');
+    } else {
+      router.push('/');
+    }
+  };
+
   const handleQuickLogin = async (quickEmail: string) => {
     setSubmitting(true);
     setFormError(null);
     try {
       await login({ email: quickEmail, password: 'password123' });
-      router.push('/');
+      navigateAfterAuth();
     } catch (err: any) {
       setFormError(err.message || 'Failed to sign in with quick credentials');
     } finally {
@@ -82,7 +103,7 @@ export default function LoginPage() {
         avatarUrl: `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(googleName)}`,
       });
       setShowGoogleModal(false);
-      router.push('/');
+      navigateAfterAuth();
     } catch (err: any) {
       alert(err.message || 'Google OAuth failed');
     } finally {
@@ -99,7 +120,7 @@ export default function LoginPage() {
         avatarUrl: `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(quickName)}`,
       });
       setShowGoogleModal(false);
-      router.push('/');
+      navigateAfterAuth();
     } catch (err: any) {
       alert(err.message || 'Google OAuth failed');
     } finally {
@@ -141,13 +162,7 @@ export default function LoginPage() {
         router.push('/');
       } else {
         await login({ email, password });
-        // Check if admin forced a password reset — redirect immediately
-        const { user } = useAuthStore.getState();
-        if (user?.forcePasswordReset) {
-          router.push('/reset-password?forced=true');
-        } else {
-          router.push('/');
-        }
+        navigateAfterAuth();
       }
     } catch (err: any) {
       setFormError(err.message || 'Authentication failed');
@@ -311,7 +326,7 @@ export default function LoginPage() {
                       className={`aspect-square rounded-full border-2 overflow-hidden hover:scale-105 active:scale-95 transition relative ${selectedAvatar === url ? 'border-primary ring-2 ring-primary/15' : 'border-slate-100 opacity-80 hover:opacity-100'}`}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt={`Avatar seed ${i+1}`} className="w-full h-full object-cover" />
+                      <img src={url} alt={`Avatar seed ${i+1}`} width="48" height="48" className="w-full h-full object-cover" />
                       {selectedAvatar === url && (
                         <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
                           <Check className="w-3.5 h-3.5 text-white drop-shadow" />

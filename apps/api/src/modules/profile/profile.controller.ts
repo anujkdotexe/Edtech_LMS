@@ -27,13 +27,26 @@ export class ProfileController {
       return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'User context is missing' });
     }
 
-    const { name, avatarUrl } = request.body as { name?: string; avatarUrl?: string };
+    const { name, avatarUrl, password } = request.body as { name?: string; avatarUrl?: string; password?: string };
 
     try {
-      const updated = await ProfileService.updateProfile(request.user.userId, { name, avatarUrl });
+      const updated = await ProfileService.updateProfile(request.user.userId, { name, avatarUrl, password });
       return sendSuccess(reply, updated);
     } catch (error) {
       return handleControllerError(reply, error, 'Failed to update profile');
+    }
+  }
+
+  static async getDailyWarmup(request: FastifyRequest, reply: FastifyReply) {
+    if (!request.user) {
+      return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'User context is missing' });
+    }
+
+    try {
+      const warmup = await ProfileService.getDailyWarmup(request.user.userId);
+      return sendSuccess(reply, warmup);
+    } catch (error) {
+      return handleControllerError(reply, error, 'Failed to fetch daily warmup');
     }
   }
 
@@ -42,8 +55,10 @@ export class ProfileController {
       return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'User context is missing' });
     }
 
+    const challenge = request.body as { challengeId?: string; answer?: string } | undefined;
+
     try {
-      const result = await ProfileService.claimDailyWarmup(request.user.userId, request.ip);
+      const result = await ProfileService.claimDailyWarmup(request.user.userId, challenge, request.ip);
       return sendSuccess(reply, result);
     } catch (error) {
       return handleControllerError(reply, error, 'Failed to claim daily warmup');

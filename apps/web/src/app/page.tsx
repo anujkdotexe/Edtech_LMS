@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../store/useAuthStore';
@@ -13,6 +13,11 @@ import {
   ShieldAlert,
   Terminal,
   Lightbulb,
+  ArrowRight,
+  Flame,
+  CheckCircle,
+  PlayCircle,
+  Clock,
 } from 'lucide-react';
 import { StatsOverview } from '../components/dashboard/StatsOverview';
 import { DailyWarmupCard } from '../components/dashboard/DailyWarmupCard';
@@ -81,6 +86,33 @@ export default function DashboardPage() {
     await fetchProfile();
   };
 
+  // Dynamic time-based greeting
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
+
+  // Dynamic motivation message
+  const motivation = useMemo(() => {
+    const streak = user?.stats?.currentStreak ?? 0;
+    if (streak >= 3) {
+      return `${streak}-day streak active! Keep the momentum going today.`;
+    }
+    if (streak > 0) {
+      return `${streak}-day streak in progress. Complete a lesson to extend your streak!`;
+    }
+    return 'Start your daily streak today with a 30-second vocabulary challenge!';
+  }, [user?.stats?.currentStreak]);
+
+  // Identify active / unlocked course to resume learning
+  const activeCourse = useMemo(() => {
+    if (!courses.length) return null;
+    const unlocked = courses.find((c) => c.isUnlocked || Number(c.price) === 0);
+    return unlocked || null;
+  }, [courses]);
+
   const isDev = user?.role === 'DEVELOPER' || !!user?.impersonatedBy;
   const isAdmin = user?.role === 'ADMIN' || isDev;
 
@@ -95,7 +127,7 @@ export default function DashboardPage() {
             </span>
             <div>
               <p className="font-bold text-sm">Privileged Account Session</p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-300">
                 You are viewing the student portal as a {user?.role}.
               </p>
             </div>
@@ -119,17 +151,18 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Hero Welcome & Tip */}
+      {/* Hero Welcome & Personalized Dynamic Greeting */}
       <div className="bg-gradient-to-r from-primary via-indigo-600 to-primary-dark rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
-        <div className="relative z-10 max-w-2xl space-y-2">
+        <div className="relative z-10 max-w-2xl space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-bold text-indigo-100 border border-white/10">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Welcome back, {user?.name || 'Explorer'}!</span>
+            <span>{greeting}, {user?.name || 'Student'}!</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-white">
             Level up your language proficiency today.
           </h1>
-          <div className="flex items-center gap-2 pt-2 text-indigo-100 text-xs sm:text-sm">
+          <p className="text-xs sm:text-sm text-indigo-100 font-medium">{motivation}</p>
+          <div className="flex items-center gap-2 pt-1 text-indigo-100 text-xs sm:text-sm">
             <Lightbulb className="w-4 h-4 text-amber-300 shrink-0" />
             <p className="italic">{dailyTip}</p>
           </div>
@@ -139,12 +172,95 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Quick Action Shortcuts */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Link
+          href="/courses"
+          className="bg-white border border-slate-200/80 hover:border-indigo-300 rounded-2xl p-4 shadow-sm hover:shadow transition flex items-center gap-3 group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition">
+            <BookOpen className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition">Course Catalog</p>
+            <p className="text-[11px] text-slate-600">CEFR A1–C2 tiers</p>
+          </div>
+        </Link>
+
+        <Link
+          href="/quizzes"
+          className="bg-white border border-slate-200/80 hover:border-amber-300 rounded-2xl p-4 shadow-sm hover:shadow transition flex items-center gap-3 group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition">
+            <Trophy className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-900 group-hover:text-amber-600 transition">Practice Quizzes</p>
+            <p className="text-[11px] text-slate-600">Score XP &amp; Badges</p>
+          </div>
+        </Link>
+
+        <Link
+          href="/leaderboard"
+          className="bg-white border border-slate-200/80 hover:border-emerald-300 rounded-2xl p-4 shadow-sm hover:shadow transition flex items-center gap-3 group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition">
+            <Flame className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-900 group-hover:text-emerald-600 transition">Leaderboard</p>
+            <p className="text-[11px] text-slate-600">Weekly rankings</p>
+          </div>
+        </Link>
+
+        <Link
+          href="/profile"
+          className="bg-white border border-slate-200/80 hover:border-purple-300 rounded-2xl p-4 shadow-sm hover:shadow transition flex items-center gap-3 group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-105 transition">
+            <Zap className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-900 group-hover:text-purple-600 transition">My Profile</p>
+            <p className="text-[11px] text-slate-600">Stats &amp; History</p>
+          </div>
+        </Link>
+      </div>
+
       {/* Stats Overview */}
       <StatsOverview
         stats={user?.stats}
         rank={userRank}
         isLoading={loading}
       />
+
+      {/* Continue Learning Highlight (If active/enrolled course exists) */}
+      {activeCourse && (
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+              <PlayCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+                  {activeCourse.cefrLevel || 'A1'}
+                </span>
+                <span className="text-xs font-bold text-slate-600">Continue Learning</span>
+              </div>
+              <h3 className="font-display font-black text-slate-900 text-base mt-0.5">{activeCourse.title}</h3>
+              <p className="text-xs text-slate-600 line-clamp-1">{activeCourse.description}</p>
+            </div>
+          </div>
+          <Link
+            href={`/courses/${activeCourse.id}`}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm shrink-0"
+          >
+            <span>Resume Syllabus</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      )}
 
       {/* Main Grid: Left (Courses & Quizzes) | Right (Warmup & Leaderboard) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -177,7 +293,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : courses.length === 0 ? (
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center text-slate-400 text-xs">
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center text-slate-600 text-xs">
                 No courses published yet.
               </div>
             ) : (
@@ -197,7 +313,7 @@ export default function DashboardPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-500" />
+                <Trophy className="w-5 h-5 text-amber-600" />
                 <h2 className="text-lg font-black text-slate-900 font-display">
                   Practice Quizzes
                 </h2>
@@ -220,7 +336,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : quizzes.length === 0 ? (
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center text-slate-400 text-xs">
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center text-slate-600 text-xs">
                 No quizzes available at the moment.
               </div>
             ) : (
@@ -235,7 +351,7 @@ export default function DashboardPage() {
 
         {/* Right Column (1 Col) */}
         <div className="space-y-6">
-          {/* Daily Vocab Warmup */}
+          {/* Dynamic 30-Sec Daily Vocab Warmup */}
           <DailyWarmupCard
             initialCompleted={user?.stats?.warmupCompletedToday}
             onCompleted={() => loadData()}

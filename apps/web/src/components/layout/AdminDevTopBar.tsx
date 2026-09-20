@@ -128,6 +128,8 @@ export const AdminDevTopBar: React.FC<AdminDevTopBarProps> = ({
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            aria-label="User Profile Menu"
+            aria-expanded={isDropdownOpen}
             className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-semibold overflow-hidden transition ${
               isDev
                 ? 'border-indigo-600/40 bg-slate-900 hover:border-indigo-500'
@@ -135,7 +137,13 @@ export const AdminDevTopBar: React.FC<AdminDevTopBarProps> = ({
             }`}
           >
             {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              <img
+                src={user.avatarUrl}
+                alt="Avatar"
+                width="32"
+                height="32"
+                className="w-full h-full object-cover"
+              />
             ) : (
               <User className={`w-4 h-4 ${isDev ? 'text-slate-400' : 'text-slate-500'}`} />
             )}

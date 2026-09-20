@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useAuthStore } from '../../../../store/useAuthStore';
 import { apiFetch } from '../../../../lib/api';
 import Link from 'next/link';
@@ -26,8 +26,10 @@ interface QuizDetails {
   questions: Question[];
 }
 
-export default function AdminQuizQuestions({ params }: { params: { id: string } }) {
+export default function AdminQuizQuestions({ params }: { params?: { id?: string } }) {
   const router = useRouter();
+  const routeParams = useParams();
+  const quizId = (routeParams?.id as string) || params?.id;
   const { user, isAuthenticated } = useAuthStore();
   const [quiz, setQuiz] = useState<QuizDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,15 +47,16 @@ export default function AdminQuizQuestions({ params }: { params: { id: string } 
   const [correctOption, setCorrectOption] = useState<'A' | 'B' | 'C' | 'D'>('A');
 
   useEffect(() => {
-    if (isAuthenticated && ['ADMIN', 'DEVELOPER'].includes(user?.role || '')) {
-      loadQuiz();
+    if (isAuthenticated && ['ADMIN', 'DEVELOPER'].includes(user?.role || '') && quizId && quizId !== 'undefined') {
+      loadQuiz(quizId);
     }
-  }, [isAuthenticated, user, params.id]);
+  }, [isAuthenticated, user, quizId]);
 
-  const loadQuiz = async () => {
+  const loadQuiz = async (id: string) => {
+    if (!id || id === 'undefined') return;
     setLoading(true);
     try {
-      const data = await apiFetch<QuizDetails>(`/api/quizzes/${params.id}`);
+      const data = await apiFetch<QuizDetails>(`/api/admin/quizzes/${id}`);
       setQuiz(data);
     } catch (err: any) {
       alert(err.message || 'Error loading quiz details');
@@ -91,7 +94,7 @@ export default function AdminQuizQuestions({ params }: { params: { id: string } 
     try {
       const payload = { questionText, optionA, optionB, optionC, optionD, correctOption };
       if (modalMode === 'CREATE') {
-        await apiFetch(`/api/admin/quizzes/${params.id}/questions`, {
+        await apiFetch(`/api/admin/quizzes/${quizId}/questions`, {
           method: 'POST',
           body: JSON.stringify(payload),
         });
@@ -102,7 +105,7 @@ export default function AdminQuizQuestions({ params }: { params: { id: string } 
         });
       }
       setIsModalOpen(false);
-      loadQuiz();
+      if (quizId) loadQuiz(quizId);
     } catch (err: any) {
       alert(err.message || 'Error saving question');
     }
@@ -112,7 +115,7 @@ export default function AdminQuizQuestions({ params }: { params: { id: string } 
     if (!confirm('Are you sure you want to delete this question?')) return;
     try {
       await apiFetch(`/api/admin/questions/${id}`, { method: 'DELETE' });
-      loadQuiz();
+      if (quizId) loadQuiz(quizId);
     } catch (err: any) {
       alert(err.message || 'Error deleting question');
     }

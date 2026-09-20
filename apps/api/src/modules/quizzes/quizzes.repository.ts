@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 import { updateStreakInTx } from '../../utils/streaks';
@@ -40,29 +40,34 @@ export class QuizzesRepository {
     xpEarned: number;
   }) {
     return await db.transaction(async (tx) => {
-      // 1. Fetch current XP
-      const currentXpRows = await tx
-        .select()
-        .from(schema.userXp)
-        .where(eq(schema.userXp.userId, params.userId))
-        .limit(1);
+      // 1. Atomic XP Upsert
+      const xpUpsert = await tx
+        .insert(schema.userXp)
+        .values({
+          userId: params.userId,
+          totalXp: params.xpEarned,
+          level: 1,
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: schema.userXp.userId,
+          set: {
+            totalXp: sql`${schema.userXp.totalXp} + ${params.xpEarned}`,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
 
-      const oldTotalXp = currentXpRows.length > 0 ? currentXpRows[0].totalXp : 0;
-      const newTotalXp = oldTotalXp + params.xpEarned;
+      const newTotalXp = xpUpsert[0].totalXp;
+      const oldXp = newTotalXp - params.xpEarned;
       const { level: newLevel } = calculateLevelStats(newTotalXp);
-      const { didLevelUp } = didUserLevelUp(oldTotalXp, newTotalXp);
+      const { didLevelUp } = didUserLevelUp(oldXp, newTotalXp);
 
-      if (currentXpRows.length > 0) {
+      if (xpUpsert[0].level !== newLevel) {
         await tx
           .update(schema.userXp)
-          .set({ totalXp: newTotalXp, level: newLevel, updatedAt: new Date() })
+          .set({ level: newLevel })
           .where(eq(schema.userXp.userId, params.userId));
-      } else {
-        await tx.insert(schema.userXp).values({
-          userId: params.userId,
-          totalXp: newTotalXp,
-          level: newLevel,
-        });
       }
 
       // 2. Update Streak
@@ -78,17 +83,12 @@ export class QuizzesRepository {
         totalQuestions: params.totalQuestions,
       });
 
-      // 4. Award Badges
-      const awardedBadgeNames = await checkAndAwardBadges(tx, params.userId, {
+      // 4. Award Badges with authentic badge IDs
+      const badgesUnlocked = await checkAndAwardBadges(tx, params.userId, {
         streak: streakResult.currentStreak,
         score: params.score,
         newLevel,
       });
-
-      const badgesUnlocked = awardedBadgeNames.map((name, index) => ({
-        badgeId: `badge_${index}`,
-        name,
-      }));
 
       return {
         newTotalXp,

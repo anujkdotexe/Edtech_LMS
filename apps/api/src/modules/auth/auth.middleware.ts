@@ -5,31 +5,49 @@ import { UserRole } from '@lms/types';
 
 export const verifyJWT = async (request: FastifyRequest, reply: FastifyReply) => {
   const impersonationToken = request.cookies.impersonationToken;
-  const token = request.cookies.token;
+  const primaryToken = request.cookies.token;
 
-  // Impersonation token has priority if developer is actively taking over student account
-  const activeToken = impersonationToken || token;
+  let decoded: {
+    userId: string;
+    role: UserRole;
+    impersonatedBy?: string;
+  } | null = null;
 
-  if (!activeToken) {
+  if (impersonationToken) {
+    try {
+      decoded = jwt.verify(impersonationToken, serverEnv.JWT_SECRET) as {
+        userId: string;
+        role: UserRole;
+        impersonatedBy?: string;
+      };
+    } catch {
+      // Impersonation token expired or invalid: clear cookie and fall back to primary session
+      reply.clearCookie('impersonationToken', { path: '/' });
+    }
+  }
+
+  if (!decoded && primaryToken) {
+    try {
+      decoded = jwt.verify(primaryToken, serverEnv.JWT_SECRET) as {
+        userId: string;
+        role: UserRole;
+      };
+    } catch {
+      reply.status(401).send({ error: 'Unauthorized', message: 'Invalid or expired session token' });
+      return;
+    }
+  }
+
+  if (!decoded) {
     reply.status(401).send({ error: 'Unauthorized', message: 'No active session token found' });
     return;
   }
 
-  try {
-    const decoded = jwt.verify(activeToken, serverEnv.JWT_SECRET) as {
-      userId: string;
-      role: UserRole;
-      impersonatedBy?: string;
-    };
-    
-    request.user = {
-      userId: decoded.userId,
-      role: decoded.role,
-      impersonatedBy: decoded.impersonatedBy,
-    };
-  } catch (err) {
-    reply.status(401).send({ error: 'Unauthorized', message: 'Invalid or expired session token' });
-  }
+  request.user = {
+    userId: decoded.userId,
+    role: decoded.role,
+    impersonatedBy: decoded.impersonatedBy,
+  };
 };
 
 export const checkRole = (allowedRoles: UserRole[]) => {

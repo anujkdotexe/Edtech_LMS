@@ -94,9 +94,14 @@ export class AuthController {
   }
 
   static async resetPassword(request: FastifyRequest, reply: FastifyReply) {
-    const { token, newPassword } = request.body as { token: string; newPassword: string };
+    const body = request.body as { token: string; newPassword?: string; password?: string };
+    const password = body.newPassword || body.password;
+    if (!password || password.length < 6) {
+      return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: 'Password must be at least 6 characters long' });
+    }
+
     try {
-      const result = await AuthService.resetPassword(token, newPassword);
+      const result = await AuthService.resetPassword(body.token, password);
       return sendSuccess(reply, result);
     } catch (error) {
       return handleControllerError(reply, error, 'Error resetting password');

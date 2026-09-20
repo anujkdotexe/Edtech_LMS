@@ -49,18 +49,19 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
       <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 relative">
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+          aria-label="Close purchase modal"
+          className="absolute top-5 right-5 p-1 rounded-full text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition"
         >
           <X className="w-5 h-5" />
         </button>
 
         {success ? (
           <div className="text-center py-6 space-y-3">
-            <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <h3 className="text-lg font-bold text-slate-900">Course Unlocked!</h3>
-            <p className="text-xs text-slate-500">You now have full access to this course.</p>
+            <p className="text-xs text-slate-600">You now have full access to this course.</p>
           </div>
         ) : (
           <>

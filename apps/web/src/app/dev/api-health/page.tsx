@@ -65,11 +65,11 @@ export default function ApiHealthPage() {
     {
       id: 'course-get-by-id',
       method: 'GET',
-      path: '/api/courses/6c69709e-2f53-4375-97f4-6889ac0a28b8',
+      path: '/api/courses/:id',
       category: 'Courses',
       access: 'Public',
       description: 'Fetches detailed modules, lesson structures, and file path parameters for a single course.',
-      testPath: '/api/courses/6c69709e-2f53-4375-97f4-6889ac0a28b8'
+      testPath: '/api/courses'
     },
     {
       id: 'quizzes-get',
@@ -289,7 +289,20 @@ export default function ApiHealthPage() {
     }));
 
     const start = performance.now();
-    const fetchPath = endpoint.testPath || endpoint.path;
+    let fetchPath = endpoint.testPath || endpoint.path;
+    if (endpoint.id === 'course-get-by-id') {
+      try {
+        const coursesRes = await fetch('/api/courses');
+        if (coursesRes.ok) {
+          const coursesList = await coursesRes.json();
+          if (Array.isArray(coursesList) && coursesList.length > 0 && coursesList[0].id) {
+            fetchPath = `/api/courses/${coursesList[0].id}`;
+          }
+        }
+      } catch {
+        // Fallback to configured path
+      }
+    }
     const fetchOptions = endpoint.testOptions || {
       method: endpoint.method,
       credentials: 'include'

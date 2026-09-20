@@ -14,10 +14,11 @@ Write-Host "[INFO] Installing dependencies..." -ForegroundColor Yellow
 pnpm install
 
 Write-Host "[INFO] Running database migrations and seeding..." -ForegroundColor Yellow
-Set-Location apps/api
-pnpm run db:push
-pnpm run db:seed
-Set-Location ../..
+pnpm --filter=@lms/api run db:push
+pnpm --filter=@lms/api run db:seed
+
+Write-Host "[INFO] Clearing Next.js development cache..." -ForegroundColor Yellow
+Remove-Item -Recurse -Force apps\web\.next -ErrorAction SilentlyContinue
 
 Write-Host "[OK] Setup complete. Starting servers..." -ForegroundColor Green
 

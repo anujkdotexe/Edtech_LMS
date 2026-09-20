@@ -3,22 +3,34 @@ import jwt from 'jsonwebtoken';
 import { CoursesService } from './courses.service';
 import { serverEnv } from '../../config';
 import { handleControllerError, sendSuccess } from '../../utils/response';
-import { db } from '../../db';
-import * as schema from '../../db/schema';
-import { eq, and } from 'drizzle-orm';
 
 function getOptionalUser(request: FastifyRequest) {
-  const activeToken = request.cookies.impersonationToken || request.cookies.token;
-  if (!activeToken) return null;
-  try {
-    return jwt.verify(activeToken, serverEnv.JWT_SECRET) as {
-      userId: string;
-      role: 'STUDENT' | 'ADMIN' | 'DEVELOPER';
-      impersonatedBy?: string;
-    };
-  } catch {
-    return null;
+  const { impersonationToken, token: primaryToken } = request.cookies;
+
+  if (impersonationToken) {
+    try {
+      return jwt.verify(impersonationToken, serverEnv.JWT_SECRET) as {
+        userId: string;
+        role: 'STUDENT' | 'ADMIN' | 'DEVELOPER';
+        impersonatedBy?: string;
+      };
+    } catch {
+      // Impersonation token expired or invalid: fall back to primary session
+    }
   }
+
+  if (primaryToken) {
+    try {
+      return jwt.verify(primaryToken, serverEnv.JWT_SECRET) as {
+        userId: string;
+        role: 'STUDENT' | 'ADMIN' | 'DEVELOPER';
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
 }
 
 export class CoursesController {
@@ -61,7 +73,7 @@ export class CoursesController {
     }
 
     try {
-      const result = await CoursesService.completeLesson(id, userId);
+      const result = await CoursesService.completeLesson(id, request.user!);
       return sendSuccess(reply, result);
     } catch (error) {
       return handleControllerError(reply, error, 'Could not complete lesson');
@@ -95,56 +107,38 @@ export class CoursesController {
       return reply.status(403).send({ statusCode: 403, error: 'Forbidden', message: 'Insufficient privileges' });
     }
 
-    const { cefrLevel, price, isPremium, title, description, locale } = request.body as {
+    const { cefrLevel, price, isPremium, title, description, locale, language } = request.body as {
       cefrLevel: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
       price: number;
       isPremium: boolean;
       title: string;
       description: string;
       locale?: string;
+      language?: string;
     };
 
-    const targetLocale = locale || 'en';
+    const targetLocale = locale || language || 'en';
 
     try {
-      const [newCourse] = await db
-        .insert(schema.courses)
-        .values({
-          cefrLevel: cefrLevel || 'A1',
-          price: String(price || 0.0),
-          isPremium: !!isPremium,
-          isPublished: true,
-        })
-        .returning();
-
-      await db.insert(schema.courseTranslations).values({
-        courseId: newCourse.id,
-        locale: targetLocale,
-        title: title || 'Untitled Course',
-        description: description || '',
-      });
-
-      await db.insert(schema.auditLogs).values({
-        userId: request.user.userId,
-        impersonatedBy: request.user.impersonatedBy,
-        action: 'COURSE_CREATE',
-        details: `Created new course "${title}" (${cefrLevel}) with price $${price}`,
-        ipAddress: request.ip,
-      });
+      const course = await CoursesService.createCourse(
+        {
+          cefrLevel,
+          price,
+          isPremium,
+          title,
+          description,
+          locale: targetLocale,
+        },
+        request.user,
+        request.ip
+      );
 
       return sendSuccess(
         reply,
         {
           success: true,
           message: 'Course created successfully',
-          course: {
-            id: newCourse.id,
-            cefrLevel: newCourse.cefrLevel,
-            price: Number(newCourse.price),
-            isPremium: newCourse.isPremium,
-            title,
-            description,
-          },
+          course,
         },
         201
       );
@@ -159,7 +153,7 @@ export class CoursesController {
     }
 
     const { id } = request.params as { id: string };
-    const { cefrLevel, price, isPremium, isPublished, title, description, locale } = request.body as {
+    const { cefrLevel, price, isPremium, isPublished, title, description, locale, language } = request.body as {
       cefrLevel?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
       price?: number;
       isPremium?: boolean;
@@ -167,65 +161,26 @@ export class CoursesController {
       title?: string;
       description?: string;
       locale?: string;
+      language?: string;
     };
 
-    const targetLocale = locale || 'en';
+    const targetLocale = locale || language || 'en';
 
     try {
-      const courseUpdates: any = { updatedAt: new Date() };
-      if (cefrLevel !== undefined) courseUpdates.cefrLevel = cefrLevel;
-      if (price !== undefined) courseUpdates.price = String(price);
-      if (isPremium !== undefined) courseUpdates.isPremium = isPremium;
-      if (isPublished !== undefined) courseUpdates.isPublished = isPublished;
-
-      const [updatedCourse] = await db
-        .update(schema.courses)
-        .set(courseUpdates)
-        .where(eq(schema.courses.id, id))
-        .returning();
-
-      if (!updatedCourse) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Course not found' });
-      }
-
-      if (title !== undefined || description !== undefined) {
-        const existingTrans = await db
-          .select()
-          .from(schema.courseTranslations)
-          .where(
-            and(
-              eq(schema.courseTranslations.courseId, id),
-              eq(schema.courseTranslations.locale, targetLocale)
-            )
-          )
-          .limit(1);
-
-        if (existingTrans.length > 0) {
-          const transUpdates: any = {};
-          if (title !== undefined) transUpdates.title = title;
-          if (description !== undefined) transUpdates.description = description;
-
-          await db
-            .update(schema.courseTranslations)
-            .set(transUpdates)
-            .where(eq(schema.courseTranslations.id, existingTrans[0].id));
-        } else {
-          await db.insert(schema.courseTranslations).values({
-            courseId: id,
-            locale: targetLocale,
-            title: title || 'Untitled Course',
-            description: description || '',
-          });
-        }
-      }
-
-      await db.insert(schema.auditLogs).values({
-        userId: request.user.userId,
-        impersonatedBy: request.user.impersonatedBy,
-        action: 'COURSE_UPDATE',
-        details: `Updated course ID ${id} details`,
-        ipAddress: request.ip,
-      });
+      await CoursesService.updateCourse(
+        id,
+        {
+          cefrLevel,
+          price,
+          isPremium,
+          isPublished,
+          title,
+          description,
+          locale: targetLocale,
+        },
+        request.user,
+        request.ip
+      );
 
       return sendSuccess(reply, { success: true, message: 'Course updated successfully' });
     } catch (error) {
@@ -241,23 +196,7 @@ export class CoursesController {
     const { id } = request.params as { id: string };
 
     try {
-      const [deletedCourse] = await db
-        .delete(schema.courses)
-        .where(eq(schema.courses.id, id))
-        .returning();
-
-      if (!deletedCourse) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Course not found' });
-      }
-
-      await db.insert(schema.auditLogs).values({
-        userId: request.user.userId,
-        impersonatedBy: request.user.impersonatedBy,
-        action: 'COURSE_DELETE',
-        details: `Deleted course ID ${id}`,
-        ipAddress: request.ip,
-      });
-
+      await CoursesService.deleteCourse(id, request.user, request.ip);
       return sendSuccess(reply, { success: true, message: 'Course deleted successfully' });
     } catch (error) {
       return handleControllerError(reply, error, 'Could not delete course');

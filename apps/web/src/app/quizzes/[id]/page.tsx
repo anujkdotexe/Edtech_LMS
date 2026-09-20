@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '../../../lib/api';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { 
@@ -40,8 +40,10 @@ interface SubmitResult {
   badgesUnlocked: Array<{ badgeId: string; name: string }>;
 }
 
-export default function QuizArenaPage({ params }: { params: { id: string } }) {
+export default function QuizArenaPage({ params }: { params?: { id?: string } }) {
   const router = useRouter();
+  const routeParams = useParams();
+  const quizId = (routeParams?.id as string) || params?.id;
   const { user, isAuthenticated, fetchProfile } = useAuthStore();
   const [quiz, setQuiz] = useState<QuizDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,10 +61,10 @@ export default function QuizArenaPage({ params }: { params: { id: string } }) {
   const isExitingRef = useRef(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      loadQuizQuestions();
+    if (quizId && quizId !== 'undefined') {
+      loadQuizQuestions(quizId);
     }
-  }, [isAuthenticated, params.id]);
+  }, [quizId]);
 
   // Intercept browser window/tab closes or reloads mid-quiz
   useEffect(() => {
@@ -94,11 +96,12 @@ export default function QuizArenaPage({ params }: { params: { id: string } }) {
     };
   }, [submitResult, quiz]);
 
-  const loadQuizQuestions = async () => {
+  const loadQuizQuestions = async (id: string) => {
+    if (!id || id === 'undefined') return;
     setLoading(true);
     setError(null);
     try {
-      const details = await apiFetch<QuizDetails>(`/api/quizzes/${params.id}`);
+      const details = await apiFetch<QuizDetails>(`/api/quizzes/${id}`);
       setQuiz(details);
     } catch (err: any) {
       setError(err.message || 'Could not fetch quiz questions');
@@ -138,7 +141,7 @@ export default function QuizArenaPage({ params }: { params: { id: string } }) {
   };
 
   const handleSubmitQuiz = async () => {
-    if (!quiz) return;
+    if (!quiz || !quizId) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -150,7 +153,7 @@ export default function QuizArenaPage({ params }: { params: { id: string } }) {
         }))
       };
 
-      const result = await apiFetch<SubmitResult>(`/api/quizzes/${params.id}/submit`, {
+      const result = await apiFetch<SubmitResult>(`/api/quizzes/${quizId}/submit`, {
         method: 'POST',
         body: JSON.stringify(submissionBody),
       });
@@ -174,10 +177,10 @@ export default function QuizArenaPage({ params }: { params: { id: string } }) {
     setShowLevelUpModal(false);
     setCurrentIndex(0);
     setSelectedAnswers({});
-    loadQuizQuestions();
+    if (quizId) {
+      loadQuizQuestions(quizId);
+    }
   };
-
-  if (!isAuthenticated) return null;
 
   if (loading) {
     return (
@@ -231,10 +234,12 @@ export default function QuizArenaPage({ params }: { params: { id: string } }) {
           <div className="flex justify-between items-center pb-2 border-b border-slate-100">
             <button 
               onClick={handleExitAttempt}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-slate-600 transition"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 transition"
             >
               <ChevronLeft className="w-4 h-4" /> Exit Quiz Arena
             </button>
+
+            <h1 className="text-sm font-extrabold text-slate-800 truncate max-w-xs">{quiz.title}</h1>
 
             <span className="bg-primary-light text-primary text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider">
               {quiz.difficulty} &bull; +{quiz.pointValue} XP
@@ -243,7 +248,7 @@ export default function QuizArenaPage({ params }: { params: { id: string } }) {
 
           {/* Progress bar */}
           <div className="space-y-2">
-            <div className="flex justify-between text-xs font-bold text-slate-400">
+            <div className="flex justify-between text-xs font-bold text-slate-600">
               <span>Question {currentIndex + 1} of {totalQuestions}</span>
               <span>{progressPercent}% Complete</span>
             </div>
@@ -341,7 +346,7 @@ export default function QuizArenaPage({ params }: { params: { id: string } }) {
               <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display text-slate-800">
                 Congratulations! Passed!
               </h2>
-              <p className="text-xs sm:text-sm text-slate-400 max-w-sm mx-auto leading-normal">
+              <p className="text-xs sm:text-sm text-slate-600 max-w-sm mx-auto leading-normal">
                 You have successfully mastered the grammar module check and qualified the CEFR guidelines!
               </p>
             </div>
@@ -354,7 +359,7 @@ export default function QuizArenaPage({ params }: { params: { id: string } }) {
               <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-display text-slate-800">
                 Keep Practicing!
               </h2>
-              <p className="text-xs sm:text-sm text-slate-400 max-w-sm mx-auto leading-normal">
+              <p className="text-xs sm:text-sm text-slate-600 max-w-sm mx-auto leading-normal">
                 The passing threshold requires a **70% score**. Consolation points have been awarded. Re-evaluate options and try again!
               </p>
             </div>
@@ -363,17 +368,17 @@ export default function QuizArenaPage({ params }: { params: { id: string } }) {
           {/* Points & Stats Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
             <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3.5 text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Quiz Score</span>
-              <span className={`text-xl font-black font-display ${submitResult.passed ? 'text-emerald-600' : 'text-red-500'}`}>{submitResult.score}%</span>
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-0.5">Quiz Score</span>
+              <span className={`text-xl font-black font-display ${submitResult.passed ? 'text-emerald-700' : 'text-red-600'}`}>{submitResult.score}%</span>
             </div>
 
             <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3.5 text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">XP Earned</span>
-              <span className="text-xl font-black font-display text-amber-500">+{submitResult.xpEarned} XP</span>
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-0.5">XP Earned</span>
+              <span className="text-xl font-black font-display text-amber-700">+{submitResult.xpEarned} XP</span>
             </div>
 
             <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3.5 text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Active Streak</span>
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-0.5">Active Streak</span>
               <span className="text-xl font-black font-display text-accent-streak flex items-center justify-center gap-0.5">
                 <Flame className="w-5 h-5 fill-accent-streak text-accent-streak shrink-0" />
                 {submitResult.currentStreak}d
@@ -381,7 +386,7 @@ export default function QuizArenaPage({ params }: { params: { id: string } }) {
             </div>
 
             <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3.5 text-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Overall Level</span>
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-0.5">Overall Level</span>
               <span className="text-xl font-black font-display text-primary">Lvl {submitResult.newLevel}</span>
             </div>
           </div>

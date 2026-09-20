@@ -8,8 +8,8 @@ export interface QuizItem {
   id: string;
   title: string;
   rules?: string;
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
-  pointValue: number;
+  difficulty?: 'EASY' | 'MEDIUM' | 'HARD' | string;
+  pointValue?: number;
 }
 
 interface QuizCardProps {
@@ -17,8 +17,8 @@ interface QuizCardProps {
 }
 
 export const QuizCard: React.FC<QuizCardProps> = ({ quiz }) => {
-  const getDifficultyVariant = (diff: string): 'default' | 'primary' | 'success' | 'warning' | 'error' => {
-    switch (diff.toUpperCase()) {
+  const getDifficultyVariant = (diff?: string): 'default' | 'primary' | 'success' | 'warning' | 'error' => {
+    switch ((diff || 'EASY').toUpperCase()) {
       case 'EASY':
         return 'success';
       case 'MEDIUM':
@@ -30,25 +30,30 @@ export const QuizCard: React.FC<QuizCardProps> = ({ quiz }) => {
     }
   };
 
+  const difficultyText = quiz.difficulty || 'EASY';
+  const points = quiz.pointValue ?? 50;
+
   return (
     <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between group">
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <Badge variant={getDifficultyVariant(quiz.difficulty)} size="sm">
-            {quiz.difficulty}
+            {difficultyText}
           </Badge>
-          <span className="text-xs font-extrabold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 flex items-center gap-1">
-            <Zap className="w-3 h-3 fill-amber-500" />
-            +{quiz.pointValue} XP
+          <span className="text-xs font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 flex items-center gap-1">
+            <Zap className="w-3 h-3 fill-amber-700" />
+            +{points} XP
           </span>
         </div>
 
         <div>
-          <h3 className="font-bold text-slate-900 text-base group-hover:text-primary transition line-clamp-1">
-            {quiz.title}
-          </h3>
+          <Link href={`/quizzes/${quiz.id}`}>
+            <h3 className="font-bold text-slate-900 text-base group-hover:text-primary transition line-clamp-1 hover:underline cursor-pointer">
+              {quiz.title}
+            </h3>
+          </Link>
           {quiz.rules && (
-            <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+            <p className="text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">
               {quiz.rules}
             </p>
           )}

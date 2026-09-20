@@ -2,7 +2,6 @@ import { CoursesRepository } from './courses.repository';
 import { NotFoundError, ValidationError, ForbiddenError } from '../../errors';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
-import { eq, and } from 'drizzle-orm';
 import { CourseCatalogItem, CourseDetail, LessonItem, ModuleItem } from './courses.types';
 
 export class CoursesService {
@@ -18,7 +17,10 @@ export class CoursesService {
       userOrders = await CoursesRepository.findUserSuccessfulOrders(currentUser.userId);
     }
 
-    return allCourses.map((course) => {
+    const isAdminOrDev = currentUser !== null && ['ADMIN', 'DEVELOPER'].includes(currentUser.role);
+    const visibleCourses = isAdminOrDev ? allCourses : allCourses.filter((c) => c.isPublished);
+
+    return visibleCourses.map((course) => {
       let trans = translations.find((t) => t.courseId === course.id && t.locale === requestedLocale);
       if (!trans) {
         trans = translations.find((t) => t.courseId === course.id && t.locale === 'en');
@@ -28,7 +30,7 @@ export class CoursesService {
       const isUnlocked =
         !course.isPremium ||
         hasPurchased ||
-        (currentUser !== null && ['ADMIN', 'DEVELOPER'].includes(currentUser.role));
+        isAdminOrDev;
 
       return {
         id: course.id,
@@ -53,6 +55,11 @@ export class CoursesService {
       throw new NotFoundError('Course not found');
     }
 
+    const isAdminOrDev = !!currentUser && ['ADMIN', 'DEVELOPER'].includes(currentUser.role);
+    if (!course.isPublished && !isAdminOrDev) {
+      throw new NotFoundError('Course not found');
+    }
+
     const cTranslations = await CoursesRepository.findCourseTranslationsById(courseId);
     const courseTrans =
       cTranslations.find((t) => t.locale === requestedLocale) ||
@@ -65,18 +72,7 @@ export class CoursesService {
       if (['ADMIN', 'DEVELOPER'].includes(currentUser.role)) {
         isUnlocked = true;
       } else {
-        const orders = await db
-          .select()
-          .from(schema.orders)
-          .where(
-            and(
-              eq(schema.orders.userId, currentUser.userId),
-              eq(schema.orders.courseId, courseId),
-              eq(schema.orders.status, 'SUCCESS')
-            )
-          )
-          .limit(1);
-        isUnlocked = orders.length > 0;
+        isUnlocked = await CoursesRepository.hasUserPurchasedCourse(currentUser.userId, courseId);
       }
     }
 
@@ -159,13 +155,38 @@ export class CoursesService {
     };
   }
 
-  static async completeLesson(lessonId: string, userId: string) {
+  static async completeLesson(
+    lessonId: string,
+    user: { userId: string; role: string; impersonatedBy?: string }
+  ) {
     const lesson = await CoursesRepository.findLessonById(lessonId);
     if (!lesson) {
       throw new NotFoundError('Lesson not found');
     }
 
-    const result = await CoursesRepository.completeLessonInTx(userId, lessonId);
+    // Verify course entitlement server-side
+    const isAdminOrDev = ['ADMIN', 'DEVELOPER'].includes(user.role);
+    const module = await CoursesRepository.findModuleById(lesson.moduleId);
+
+    if (!module) {
+      throw new NotFoundError('Course module not found');
+    }
+
+    const course = await CoursesRepository.findCourseById(module.courseId);
+    if (!course || (!course.isPublished && !isAdminOrDev)) {
+      throw new NotFoundError('Course not found');
+    }
+
+    if (!lesson.isFreePreview && !isAdminOrDev) {
+      if (course && course.isPremium) {
+        const hasAccess = await CoursesRepository.hasUserPurchasedCourse(user.userId, course.id);
+        if (!hasAccess) {
+          throw new ForbiddenError('You do not have access to this course');
+        }
+      }
+    }
+
+    const result = await CoursesRepository.completeLessonInTx(user.userId, lessonId);
     if (result.alreadyCompleted) {
       return {
         success: true,
@@ -204,19 +225,8 @@ export class CoursesService {
       throw new ValidationError('This course is free and unlocked for all students');
     }
 
-    const existingOrders = await db
-      .select()
-      .from(schema.orders)
-      .where(
-        and(
-          eq(schema.orders.userId, user.userId),
-          eq(schema.orders.courseId, courseId),
-          eq(schema.orders.status, 'SUCCESS')
-        )
-      )
-      .limit(1);
-
-    if (existingOrders.length > 0) {
+    const hasAlreadyPurchased = await CoursesRepository.hasUserPurchasedCourse(user.userId, courseId);
+    if (hasAlreadyPurchased) {
       throw new ValidationError('You have already purchased this course');
     }
 
@@ -243,8 +253,115 @@ export class CoursesService {
       success: orderStatus === 'SUCCESS',
       orderId: newOrder.id,
       status: orderStatus,
+      transactionId,
       message:
         orderStatus === 'SUCCESS' ? 'Course successfully unlocked' : 'Simulated payment failed',
     };
+  }
+
+  static async createCourse(
+    data: {
+      cefrLevel: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+      price: number;
+      isPremium: boolean;
+      title: string;
+      description: string;
+      locale: string;
+    },
+    user: { userId: string; impersonatedBy?: string },
+    ip?: string
+  ) {
+    const newCourse = await CoursesRepository.createCourseWithTranslation({
+      cefrLevel: data.cefrLevel || 'A1',
+      price: String(data.price || 0.0),
+      isPremium: !!data.isPremium,
+      isPublished: true,
+      locale: data.locale,
+      title: data.title,
+      description: data.description,
+    });
+
+    await db.insert(schema.auditLogs).values({
+      userId: user.userId,
+      impersonatedBy: user.impersonatedBy,
+      action: 'COURSE_CREATE',
+      details: `Created new course "${data.title}" (${data.cefrLevel}) with price $${data.price}`,
+      ipAddress: ip,
+    });
+
+    return {
+      id: newCourse.id,
+      cefrLevel: newCourse.cefrLevel,
+      price: Number(newCourse.price),
+      isPremium: newCourse.isPremium,
+      title: data.title,
+      description: data.description,
+    };
+  }
+
+  static async updateCourse(
+    id: string,
+    data: {
+      cefrLevel?: 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+      price?: number;
+      isPremium?: boolean;
+      isPublished?: boolean;
+      title?: string;
+      description?: string;
+      locale: string;
+    },
+    user: { userId: string; impersonatedBy?: string },
+    ip?: string
+  ) {
+    const courseUpdates: any = { updatedAt: new Date() };
+    if (data.cefrLevel !== undefined) courseUpdates.cefrLevel = data.cefrLevel;
+    if (data.price !== undefined) courseUpdates.price = String(data.price);
+    if (data.isPremium !== undefined) courseUpdates.isPremium = data.isPremium;
+    if (data.isPublished !== undefined) courseUpdates.isPublished = data.isPublished;
+
+    const translationData = (data.title !== undefined || data.description !== undefined)
+      ? { locale: data.locale, title: data.title, description: data.description }
+      : undefined;
+
+    const updatedCourse = await CoursesRepository.updateCourseWithTranslation(
+      id,
+      courseUpdates,
+      translationData
+    );
+
+    if (!updatedCourse) {
+      throw new NotFoundError('Course not found');
+    }
+
+    await db.insert(schema.auditLogs).values({
+      userId: user.userId,
+      impersonatedBy: user.impersonatedBy,
+      action: 'COURSE_UPDATE',
+      details: `Updated course ID ${id} details`,
+      ipAddress: ip,
+    });
+
+    return updatedCourse;
+  }
+
+  static async deleteCourse(
+    id: string,
+    user: { userId: string; impersonatedBy?: string },
+    ip?: string
+  ) {
+    const deletedCourse = await CoursesRepository.deleteCourse(id);
+    if (!deletedCourse) {
+      throw new NotFoundError('Course not found');
+    }
+
+    await db.insert(schema.auditLogs).values({
+      userId: user.userId,
+      impersonatedBy: user.impersonatedBy,
+      action: 'COURSE_DELETE',
+      details: `Deleted course ID ${id}`,
+      ipAddress: ip,
+    });
+
+    return deletedCourse;
   }
 }

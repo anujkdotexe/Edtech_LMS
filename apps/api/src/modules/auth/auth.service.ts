@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { AuthRepository } from './auth.repository';
 import { serverEnv } from '../../config';
-import { AppError, UnauthorizedError, ForbiddenError, ValidationError } from '../../errors';
+import { UnauthorizedError, ForbiddenError, ValidationError } from '../../errors';
 import { UserAuthProfile } from './auth.types';
 
 export class AuthService {

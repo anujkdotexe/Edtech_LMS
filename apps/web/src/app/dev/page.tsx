@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -41,9 +41,15 @@ interface SystemHealth {
 interface StudentRef {
   id: string;
   name: string;
+  email: string;
   avatarUrl: string | null;
   totalXp: number;
   level: number;
+}
+
+interface CourseRef {
+  id: string;
+  title: string;
 }
 
 interface AdvancedLogs {
@@ -54,13 +60,22 @@ interface AdvancedLogs {
 
 export default function DevConsolePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated, fetchProfile } = useAuthStore();
   
   // Tab Management
   const [activeTab, setActiveTab] = useState<'IMPERSONATION' | 'CRM' | 'OVERRIDES' | 'DIAGNOSTICS' | 'FEATURE_FLAGS' | 'CACHE' | 'RECONCILIATION' | 'QUEUE'>('IMPERSONATION');
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['IMPERSONATION', 'CRM', 'OVERRIDES', 'DIAGNOSTICS', 'FEATURE_FLAGS', 'CACHE', 'RECONCILIATION', 'QUEUE'].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [searchParams]);
   
   // Core lists
   const [students, setStudents] = useState<StudentRef[]>([]);
+  const [courses, setCourses] = useState<CourseRef[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [advancedLogs, setAdvancedLogs] = useState<AdvancedLogs | null>(null);
@@ -74,7 +89,7 @@ export default function DevConsolePage() {
   const [targetEmail, setTargetEmail] = useState('');
   
   // CRM Import state
-  const [csvText, setCsvText] = useState("Name,Email\nDavid Vance,david@lms.local\nElena Rostova,elena@lms.local");
+  const [csvText, setCsvText] = useState('');
   const [crmMessage, setCrmMessage] = useState<string | null>(null);
 
   // Overrides state
@@ -102,9 +117,37 @@ export default function DevConsolePage() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      // 1. Fetch student references from leaderboard
-      const leaderboardRes = await apiFetch<{ leaderboard: any[] }>('/api/leaderboard');
-      setStudents(leaderboardRes.leaderboard || []);
+      // 1. Fetch student references from admin students list
+      try {
+        const studentsRes = await apiFetch<any[]>('/api/admin/students');
+        const mapped: StudentRef[] = studentsRes.map((s) => ({
+          id: s.id,
+          name: s.name,
+          email: s.email,
+          avatarUrl: s.avatarUrl || null,
+          totalXp: s.totalXp || 0,
+          level: s.level || 1,
+        }));
+        setStudents(mapped);
+      } catch (_) {
+        const leaderboardRes = await apiFetch<{ leaderboard: any[] }>('/api/leaderboard');
+        setStudents(
+          (leaderboardRes.leaderboard || []).map((s) => ({
+            ...s,
+            email: s.email || 'student@lms.local',
+          }))
+        );
+      }
+
+      // Fetch active courses for overrides
+      try {
+        const coursesRes = await apiFetch<any[]>('/api/courses');
+        const mappedCourses = coursesRes.map((c) => ({ id: c.id, title: c.title }));
+        setCourses(mappedCourses);
+        if (mappedCourses.length > 0 && overrideAction === 'REVOKE_COURSE') {
+          setOverrideValue(mappedCourses[0].id);
+        }
+      } catch (_) {}
 
       // 2. Fetch Diagnostics
       const healthRes = await apiFetch<SystemHealth>('/api/dev/monitoring/health');
@@ -157,7 +200,7 @@ export default function DevConsolePage() {
     try {
       await apiFetch('/api/dev/impersonate', {
         method: 'POST',
-        body: JSON.stringify({ studentEmail: email }),
+        body: JSON.stringify({ studentEmail: email, email }),
       });
       setSuccessMsg(`Takeover successful! Switch active session email: ${email}`);
       
@@ -408,7 +451,7 @@ export default function DevConsolePage() {
                       </div>
                       
                       <button
-                        onClick={() => handleStartImpersonation('student@lms.local')}
+                        onClick={() => handleStartImpersonation(student.email)}
                         disabled={submitting}
                         className="bg-white border border-slate-200 hover:border-primary hover:text-primary text-slate-500 font-bold px-3 py-1.5 rounded-lg text-[10px] transition shadow-sm"
                       >
@@ -440,6 +483,7 @@ export default function DevConsolePage() {
                   rows={6}
                   value={csvText}
                   onChange={(e) => setCsvText(e.target.value)}
+                  placeholder={"Name,Email\nDavid Vance,david@lms.local\nElena Rostova,elena@lms.local"}
                   className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono text-xs focus:outline-none focus:border-primary focus:bg-white transition"
                 ></textarea>
               </div>
@@ -513,8 +557,15 @@ export default function DevConsolePage() {
                       onChange={(e) => setOverrideValue(e.target.value)}
                       className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs font-semibold focus:outline-none"
                     >
-                      <option value="A1-French">A1 French Course</option>
-                      <option value="B1-German">B1 German Course</option>
+                      {courses.length === 0 ? (
+                        <option value="">No published courses</option>
+                      ) : (
+                        courses.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.title}
+                          </option>
+                        ))
+                      )}
                     </select>
                   ) : (
                     <input 
@@ -751,13 +802,22 @@ export default function DevConsolePage() {
               <div className={`flex items-center gap-3 p-4 rounded-xl border font-bold ${
                 reconciliation.reconciliationStatus === 'RECONCILED'
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  : reconciliation.reconciliationStatus === 'GATEWAY_UNAVAILABLE'
+                  ? 'bg-slate-100 border-slate-300 text-slate-700'
                   : 'bg-amber-50 border-amber-200 text-amber-700'
               }`}>
-                {reconciliation.reconciliationStatus === 'RECONCILED'
-                  ? <CheckCircle2 className="w-5 h-5" />
-                  : <AlertCircle className="w-5 h-5" />
-                }
-                <span className="text-sm">{reconciliation.reconciliationStatus === 'RECONCILED' ? 'All payments reconciled successfully.' : 'Variance detected between DB and gateway.'}</span>
+                {reconciliation.reconciliationStatus === 'RECONCILED' ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-slate-500" />
+                )}
+                <span className="text-sm">
+                  {reconciliation.reconciliationStatus === 'RECONCILED'
+                    ? 'All payments reconciled successfully.'
+                    : reconciliation.reconciliationStatus === 'GATEWAY_UNAVAILABLE'
+                    ? (reconciliation.message || 'Payment gateway credentials not configured (STRIPE_SECRET_KEY missing). Gateway reconciliation unavailable.')
+                    : 'Variance detected between DB and gateway.'}
+                </span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
