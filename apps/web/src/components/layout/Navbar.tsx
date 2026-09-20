@@ -14,6 +14,7 @@ export const Navbar: React.FC = () => {
   const studentNavLinks = [
     { name: 'Dashboard', path: '/', icon: <Home className="w-4 h-4" /> },
     { name: 'Courses', path: '/courses', icon: <BookOpen className="w-4 h-4" /> },
+    { name: 'Quizzes', path: '/quizzes', icon: <Sparkles className="w-4 h-4" /> },
     { name: 'Leaderboard', path: '/leaderboard', icon: <Trophy className="w-4 h-4" /> },
   ];
 

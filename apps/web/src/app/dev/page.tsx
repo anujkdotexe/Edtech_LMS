@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -54,10 +54,18 @@ interface AdvancedLogs {
 
 export default function DevConsolePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated, fetchProfile } = useAuthStore();
   
   // Tab Management
   const [activeTab, setActiveTab] = useState<'IMPERSONATION' | 'CRM' | 'OVERRIDES' | 'DIAGNOSTICS' | 'FEATURE_FLAGS' | 'CACHE' | 'RECONCILIATION' | 'QUEUE'>('IMPERSONATION');
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['IMPERSONATION', 'CRM', 'OVERRIDES', 'DIAGNOSTICS', 'FEATURE_FLAGS', 'CACHE', 'RECONCILIATION', 'QUEUE'].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [searchParams]);
   
   // Core lists
   const [students, setStudents] = useState<StudentRef[]>([]);
