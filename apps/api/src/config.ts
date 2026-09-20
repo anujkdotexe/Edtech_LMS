@@ -12,13 +12,14 @@ const serverEnvSchema = z.object({
   DATABASE_URL: z.string().url().min(1, 'DATABASE_URL connection string is required'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters long'),
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters long'),
+  JWT_RESET_SECRET: z.string().min(32, 'JWT_RESET_SECRET must be at least 32 characters long'),
   UPLOAD_DIR: z.string().default('public/uploads'),
 });
 
 const result = serverEnvSchema.safeParse(process.env);
 
 if (!result.success) {
-  console.error('❌ Invalid Backend Environment configuration:', result.error.format());
+  console.error('[ERROR] Invalid Backend Environment configuration:', result.error.format());
   process.exit(1);
 }
 

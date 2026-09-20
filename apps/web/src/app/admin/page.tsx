@@ -5,7 +5,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { apiFetch } from '../../lib/api';
 import {
   BookOpen, Users, CreditCard, BarChart3, 
-  Sparkles, CheckCircle2, RefreshCw, ShieldAlert, Settings, Award
+  Sparkles, CheckCircle2, RefreshCw, ShieldAlert, Settings, Award, Flame
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -267,7 +267,7 @@ export default function AdminDashboardPage() {
                       <div className="flex-1">
                         <p className="text-sm font-bold text-slate-800">{leader.name}</p>
                         <p className="text-[10px] font-bold text-amber-600 flex items-center gap-1">
-                          <span className="text-amber-500">🔥</span> {leader.streak} Day Streak
+                          <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" /> {leader.streak} Day Streak
                         </p>
                       </div>
                     </div>

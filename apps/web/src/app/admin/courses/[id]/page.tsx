@@ -150,22 +150,12 @@ export default function AdminCourseEditor({ params }: { params: { id: string } }
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
-      const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || '';
-      const impersonationToken = document.cookie.split('; ').find(row => row.startsWith('impersonationToken='))?.split('=')[1];
-      const activeToken = impersonationToken || token;
 
-      const res = await fetch(`http://localhost:4000/api/admin/lessons/${lessonId}/upload`, {
+      await apiFetch(`/api/admin/lessons/${lessonId}/upload`, {
         method: 'PUT',
         body: formData,
-        headers: {
-          'Authorization': `Bearer ${activeToken}`
-        }
       });
       
-      if (!res.ok) {
-        throw new Error('Upload failed');
-      }
       loadCourse();
     } catch (err: any) {
       alert(err.message || 'Upload failed');

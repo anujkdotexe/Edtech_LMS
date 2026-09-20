@@ -11,7 +11,8 @@ import {
   char,
   pgEnum,
   unique,
-  index
+  index,
+  primaryKey
 } from 'drizzle-orm/pg-core';
 
 // --- ENUMS DEFINITIONS ---
@@ -32,6 +33,7 @@ export const users = pgTable('users', {
   avatarUrl: varchar('avatar_url', { length: 255 }),
   forcePasswordReset: boolean('force_password_reset').default(false).notNull(),
   isSuspended: boolean('is_suspended').default(false).notNull(),
+  lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => {
@@ -125,7 +127,10 @@ export const moduleTranslations = pgTable('module_translations', {
 export const lessons = pgTable('lessons', {
   id: uuid('id').primaryKey().defaultRandom(),
   moduleId: uuid('module_id').references(() => modules.id, { onDelete: 'cascade' }).notNull(),
-  filePath: varchar('file_path', { length: 255 }).notNull(),
+  filePath: varchar('file_path', { length: 255 }),
+  lessonType: varchar('lesson_type', { length: 50 }).default('VIDEO').notNull(),
+  durationSeconds: integer('duration_seconds').default(0).notNull(),
+  isFreePreview: boolean('is_free_preview').default(false).notNull(),
   orderIndex: integer('order_index').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => {
@@ -188,6 +193,8 @@ export const quizAttempts = pgTable('quiz_attempts', {
   quizId: uuid('quiz_id').references(() => quizzes.id, { onDelete: 'cascade' }).notNull(),
   score: integer('score').notNull(),
   passed: boolean('passed').notNull(),
+  correctCount: integer('correct_count').default(0).notNull(),
+  totalQuestions: integer('total_questions').default(0).notNull(),
   attemptedAt: timestamp('attempted_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => {
   return {
@@ -223,3 +230,37 @@ export const siteConfig = pgTable('site_config', {
   value: text('value').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+// 18. daily_warmup_completions
+export const dailyWarmupCompletions = pgTable('daily_warmup_completions', {
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  completedDate: date('completed_date').notNull(),
+  xpAwarded: integer('xp_awarded').default(25).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => {
+  return {
+    pk: primaryKey({ columns: [table.userId, table.completedDate] }),
+  };
+});
+
+// 19. lesson_completions
+export const lessonCompletions = pgTable('lesson_completions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  lessonId: uuid('lesson_id').references(() => lessons.id, { onDelete: 'cascade' }).notNull(),
+  completedAt: timestamp('completed_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => {
+  return {
+    uniqueUserLesson: unique('unique_user_lesson').on(table.userId, table.lessonId),
+    userLessonIdx: index('idx_lesson_completions_user_lesson').on(table.userId, table.lessonId),
+  };
+});
+
+// 20. feature_flags
+export const featureFlags = pgTable('feature_flags', {
+  key: varchar('key', { length: 100 }).primaryKey().notNull(),
+  enabled: boolean('enabled').default(false).notNull(),
+  description: text('description'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+

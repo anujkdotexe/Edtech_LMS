@@ -53,3 +53,5 @@ Thumbs.db
 /docs/audits/implementation-audit-report.md
 /prompt.md 
 lms_role_feature_map.html
+*.tsbuildinfo
+cookies.txt
