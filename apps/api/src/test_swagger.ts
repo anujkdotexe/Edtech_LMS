@@ -28,9 +28,7 @@ async function run() {
   });
 
   await server.ready();
-  console.log('SWAGGER SPEC:');
-  // @ts-ignore
-  console.log(JSON.stringify(server.swagger ? server.swagger() : 'undefined on server', null, 2));
+  console.log(JSON.stringify((server as any).swagger ? (server as any).swagger() : 'undefined on server', null, 2));
 }
 
 run().catch(console.error);

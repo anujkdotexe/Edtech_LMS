@@ -5,14 +5,27 @@ import { serverEnv } from '../../config';
 import { handleControllerError, sendSuccess } from '../../utils/response';
 
 function getOptionalUserId(request: FastifyRequest): string | null {
-  const activeToken = request.cookies.impersonationToken || request.cookies.token;
-  if (!activeToken) return null;
-  try {
-    const decoded = jwt.verify(activeToken, serverEnv.JWT_SECRET) as { userId: string };
-    return decoded.userId;
-  } catch {
-    return null;
+  const { impersonationToken, token: primaryToken } = request.cookies;
+
+  if (impersonationToken) {
+    try {
+      const decoded = jwt.verify(impersonationToken, serverEnv.JWT_SECRET) as { userId: string };
+      return decoded.userId;
+    } catch {
+      // Impersonation token expired or invalid: fall back to primary session
+    }
   }
+
+  if (primaryToken) {
+    try {
+      const decoded = jwt.verify(primaryToken, serverEnv.JWT_SECRET) as { userId: string };
+      return decoded.userId;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
 }
 
 export class LeaderboardController {

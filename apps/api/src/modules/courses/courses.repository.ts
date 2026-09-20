@@ -10,7 +10,7 @@ export class CoursesRepository {
     return await db.select().from(schema.courses);
   }
 
-  static async findCourseTranslations(locales: string[] = ['en']) {
+  static async findCourseTranslations(_locales: string[] = ['en']) {
     return await db.select().from(schema.courseTranslations);
   }
 
@@ -31,6 +31,26 @@ export class CoursesRepository {
       .select()
       .from(schema.courseTranslations)
       .where(eq(schema.courseTranslations.courseId, courseId));
+  }
+
+  static async findModuleById(moduleId: string) {
+    const rows = await db.select().from(schema.modules).where(eq(schema.modules.id, moduleId)).limit(1);
+    return rows[0] || null;
+  }
+
+  static async hasUserPurchasedCourse(userId: string, courseId: string): Promise<boolean> {
+    const orders = await db
+      .select({ id: schema.orders.id })
+      .from(schema.orders)
+      .where(
+        and(
+          eq(schema.orders.userId, userId),
+          eq(schema.orders.courseId, courseId),
+          eq(schema.orders.status, 'SUCCESS')
+        )
+      )
+      .limit(1);
+    return orders.length > 0;
   }
 
   static async findModulesByCourseId(courseId: string) {

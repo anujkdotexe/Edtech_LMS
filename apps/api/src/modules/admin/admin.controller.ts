@@ -7,7 +7,6 @@ import {
   RevokeCourseDto,
   SendMessageDto,
   UpdateSiteSettingsDto,
-  CreateModuleDto,
   UpdateModuleDto,
   CreateLessonDto,
   UpdateLessonDto,

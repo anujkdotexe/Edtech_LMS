@@ -140,7 +140,7 @@ export const DailyWarmupCard: React.FC<DailyWarmupCardProps> = ({
           </div>
           <div>
             <h4 className="font-bold text-slate-900 text-sm">Unable to load Daily Warmup</h4>
-            <p className="text-xs text-slate-600">We could not retrieve today's challenge. Please check your connection.</p>
+            <p className="text-xs text-slate-600">We could not retrieve today&apos;s challenge. Please check your connection.</p>
           </div>
         </div>
         <button

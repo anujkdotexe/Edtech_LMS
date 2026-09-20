@@ -1,4 +1,4 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 import { updateStreakInTx } from '../../utils/streaks';

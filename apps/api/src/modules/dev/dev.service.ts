@@ -2,7 +2,7 @@ import os from 'os';
 import jwt from 'jsonwebtoken';
 import { DevRepository } from './dev.repository';
 import { serverEnv } from '../../config';
-import { NotFoundError, ValidationError } from '../../errors';
+import { NotFoundError } from '../../errors';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 import { desc, eq } from 'drizzle-orm';
@@ -197,7 +197,7 @@ export class DevService {
       .orderBy(desc(schema.auditLogs.createdAt))
       .limit(10);
 
-    const jobs = recentAudit.map((log, idx) => ({
+    const jobs = recentAudit.map((log) => ({
       id: `task_${log.id.slice(0, 8)}`,
       type: log.action,
       status: 'COMPLETED',

@@ -2,7 +2,6 @@ import { CoursesRepository } from './courses.repository';
 import { NotFoundError, ValidationError, ForbiddenError } from '../../errors';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
-import { eq, and } from 'drizzle-orm';
 import { CourseCatalogItem, CourseDetail, LessonItem, ModuleItem } from './courses.types';
 
 export class CoursesService {
@@ -73,18 +72,7 @@ export class CoursesService {
       if (['ADMIN', 'DEVELOPER'].includes(currentUser.role)) {
         isUnlocked = true;
       } else {
-        const orders = await db
-          .select()
-          .from(schema.orders)
-          .where(
-            and(
-              eq(schema.orders.userId, currentUser.userId),
-              eq(schema.orders.courseId, courseId),
-              eq(schema.orders.status, 'SUCCESS')
-            )
-          )
-          .limit(1);
-        isUnlocked = orders.length > 0;
+        isUnlocked = await CoursesRepository.hasUserPurchasedCourse(currentUser.userId, courseId);
       }
     }
 
@@ -178,11 +166,7 @@ export class CoursesService {
 
     // Verify course entitlement server-side
     const isAdminOrDev = ['ADMIN', 'DEVELOPER'].includes(user.role);
-    const [module] = await db
-      .select()
-      .from(schema.modules)
-      .where(eq(schema.modules.id, lesson.moduleId))
-      .limit(1);
+    const module = await CoursesRepository.findModuleById(lesson.moduleId);
 
     if (!module) {
       throw new NotFoundError('Course module not found');
@@ -195,19 +179,8 @@ export class CoursesService {
 
     if (!lesson.isFreePreview && !isAdminOrDev) {
       if (course && course.isPremium) {
-        const orders = await db
-          .select()
-          .from(schema.orders)
-          .where(
-            and(
-              eq(schema.orders.userId, user.userId),
-              eq(schema.orders.courseId, course.id),
-              eq(schema.orders.status, 'SUCCESS')
-            )
-          )
-          .limit(1);
-
-        if (orders.length === 0) {
+        const hasAccess = await CoursesRepository.hasUserPurchasedCourse(user.userId, course.id);
+        if (!hasAccess) {
           throw new ForbiddenError('You do not have access to this course');
         }
       }
@@ -252,19 +225,8 @@ export class CoursesService {
       throw new ValidationError('This course is free and unlocked for all students');
     }
 
-    const existingOrders = await db
-      .select()
-      .from(schema.orders)
-      .where(
-        and(
-          eq(schema.orders.userId, user.userId),
-          eq(schema.orders.courseId, courseId),
-          eq(schema.orders.status, 'SUCCESS')
-        )
-      )
-      .limit(1);
-
-    if (existingOrders.length > 0) {
+    const hasAlreadyPurchased = await CoursesRepository.hasUserPurchasedCourse(user.userId, courseId);
+    if (hasAlreadyPurchased) {
       throw new ValidationError('You have already purchased this course');
     }
 

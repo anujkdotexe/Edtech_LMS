@@ -3,7 +3,7 @@ import { db } from '../../db';
 import * as schema from '../../db/schema';
 import { updateStreakInTx } from '../../utils/streaks';
 import { calculateLevelStats, didUserLevelUp } from '../../utils/xp';
-import { checkAndAwardBadges, AVAILABLE_BADGES } from '../../utils/badges';
+import { checkAndAwardBadges } from '../../utils/badges';
 
 export class ProfileRepository {
   static async findUserById(userId: string) {

@@ -5,17 +5,32 @@ import { serverEnv } from '../../config';
 import { handleControllerError, sendSuccess } from '../../utils/response';
 
 function getOptionalUser(request: FastifyRequest) {
-  const activeToken = request.cookies.impersonationToken || request.cookies.token;
-  if (!activeToken) return null;
-  try {
-    return jwt.verify(activeToken, serverEnv.JWT_SECRET) as {
-      userId: string;
-      role: 'STUDENT' | 'ADMIN' | 'DEVELOPER';
-      impersonatedBy?: string;
-    };
-  } catch {
-    return null;
+  const { impersonationToken, token: primaryToken } = request.cookies;
+
+  if (impersonationToken) {
+    try {
+      return jwt.verify(impersonationToken, serverEnv.JWT_SECRET) as {
+        userId: string;
+        role: 'STUDENT' | 'ADMIN' | 'DEVELOPER';
+        impersonatedBy?: string;
+      };
+    } catch {
+      // Impersonation token expired or invalid: fall back to primary session
+    }
   }
+
+  if (primaryToken) {
+    try {
+      return jwt.verify(primaryToken, serverEnv.JWT_SECRET) as {
+        userId: string;
+        role: 'STUDENT' | 'ADMIN' | 'DEVELOPER';
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
 }
 
 export class CoursesController {

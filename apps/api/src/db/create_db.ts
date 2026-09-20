@@ -12,7 +12,7 @@ async function main() {
   console.log('[INFO] Ensuring database exists...');
   
   // Connect to default 'postgres' database to perform the creation query
-  const defaultUrl = connectionString.replace(/\/([^\/]+)$/, '/postgres');
+  const defaultUrl = connectionString.replace(/\/([^/]+)$/, '/postgres');
   
   const client = new pg.Client({
     connectionString: defaultUrl,
