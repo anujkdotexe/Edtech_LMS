@@ -48,8 +48,13 @@ export const signupSchema: FastifySchema = {
     201: {
       type: 'object',
       properties: {
-        success: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'User registered successfully' }
+        id: { type: 'string', example: 'user-uuid' },
+        name: { type: 'string', example: 'John Doe' },
+        email: { type: 'string', example: 'student@lms.local' },
+        role: { type: 'string', example: 'STUDENT' },
+        avatarUrl: { type: 'string', nullable: true, example: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=John' },
+        forcePasswordReset: { type: 'boolean', example: false },
+        lastLoginAt: { type: 'string', nullable: true }
       }
     },
     400: {
@@ -200,6 +205,32 @@ export const googleOAuthSchema: FastifySchema = {
   }
 };
 
+export const getMeSchema: FastifySchema = {
+  description: 'Get lightweight session profile of current authenticated user',
+  tags: ['Authentication'],
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', example: 'user-uuid' },
+        name: { type: 'string', example: 'John Doe' },
+        email: { type: 'string', example: 'student@lms.local' },
+        role: { type: 'string', example: 'STUDENT' },
+        avatarUrl: { type: 'string', nullable: true, example: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=John' },
+        forcePasswordReset: { type: 'boolean', example: false },
+        lastLoginAt: { type: 'string', nullable: true, example: '2026-05-21T09:10:27Z' },
+      },
+    },
+    401: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 401 },
+        error: { type: 'string', example: 'Unauthorized' },
+        message: { type: 'string', example: 'Not authenticated' },
+      },
+    },
+  },
+};
 
 // 3. Syllabus & Course Catalog Router Schemas
 export const coursesSchema: FastifySchema = {
@@ -394,6 +425,35 @@ export const purchaseCourseSchema: FastifySchema = {
   }
 };
 
+export const completeLessonSchema: FastifySchema = {
+  description: 'Mark a lesson as completed by the student and award XP and streak progress',
+  tags: ['Courses'],
+  params: {
+    type: 'object',
+    required: ['id'],
+    properties: {
+      id: { type: 'string', example: 'lesson-uuid' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        completed: { type: 'boolean', example: true },
+        alreadyCompleted: { type: 'boolean', example: false },
+        xpEarned: { type: 'number', example: 15 },
+        currentStreak: { type: 'number', example: 3 },
+        longestStreak: { type: 'number', example: 5 },
+        didLevelUp: { type: 'boolean', example: false },
+        newLevel: { type: 'number', example: 1 },
+        newBadges: { type: 'array', items: { type: 'string' } },
+        message: { type: 'string', example: 'Lesson completed' },
+      },
+    },
+  },
+};
+
 // 4. Interactive Gamified MCQ Quiz Router Schemas
 export const quizzesSchema: FastifySchema = {
   description: 'Retrieve a list of all available quizzes with XP values and localization',
@@ -432,21 +492,21 @@ export const quizByIdSchema: FastifySchema = {
       properties: {
         id: { type: 'string', example: 'quiz-uuid' },
         title: { type: 'string', example: 'Greetings MCQ Quiz' },
-        xpReward: { type: 'number', example: 100 },
-        passingScore: { type: 'number', example: 70 },
+        rules: { type: 'string', example: 'Answer all questions.' },
+        difficulty: { type: 'string', example: 'EASY' },
+        pointValue: { type: 'number', example: 100 },
         questions: {
           type: 'array',
           items: {
             type: 'object',
             properties: {
               id: { type: 'string', example: 'question-uuid' },
-              orderIndex: { type: 'number', example: 1 },
               questionText: { type: 'string', example: 'What does "Hola" mean?' },
-              options: {
-                type: 'array',
-                items: { type: 'string' },
-                example: ['Hello', 'Goodbye', 'Thank you', 'Please']
-              }
+              optionA: { type: 'string', example: 'Hello' },
+              optionB: { type: 'string', example: 'Goodbye' },
+              optionC: { type: 'string', example: 'Thank you' },
+              optionD: { type: 'string', example: 'Please' },
+              orderIndex: { type: 'number', example: 1 }
             }
           }
         }
@@ -488,6 +548,8 @@ export const submitQuizSchema: FastifySchema = {
       properties: {
         score: { type: 'number', example: 100 },
         passed: { type: 'boolean', example: true },
+        correctCount: { type: 'number', example: 4 },
+        totalQuestions: { type: 'number', example: 5 },
         xpEarned: { type: 'number', example: 100 },
         newTotalXp: { type: 'number', example: 550 },
         didLevelUp: { type: 'boolean', example: false },
@@ -532,7 +594,8 @@ export const profileSchema: FastifySchema = {
             progressPercent: { type: 'number', example: 20 },
             currentStreak: { type: 'number', example: 3 },
             longestStreak: { type: 'number', example: 5 },
-            lastActiveDate: { type: 'string', nullable: true, example: '2026-05-20' }
+            lastActiveDate: { type: 'string', nullable: true, example: '2026-05-20' },
+            warmupCompletedToday: { type: 'boolean', example: false }
           }
         },
         badges: {
@@ -602,11 +665,38 @@ export const updateProfileSchema: FastifySchema = {
     200: {
       type: 'object',
       properties: {
+        id: { type: 'string', example: 'user-uuid' },
+        name: { type: 'string', example: 'Johnny Doe' },
+        email: { type: 'string', example: 'john@example.com' },
+        avatarUrl: { type: ['string', 'null'], example: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=Johnny' },
         success: { type: 'boolean', example: true },
         message: { type: 'string', example: 'Profile updated successfully' }
       }
     }
   }
+};
+
+export const claimWarmupSchema: FastifySchema = {
+  description: 'Claim daily warmup XP (+25 XP) and update study streak (server-side gated once per day)',
+  tags: ['Profile'],
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        claimed: { type: 'boolean', example: true },
+        alreadyClaimed: { type: 'boolean', example: false },
+        xpAwarded: { type: 'number', example: 25 },
+        newTotalXp: { type: 'number', example: 145 },
+        newLevel: { type: 'number', example: 1 },
+        didLevelUp: { type: 'boolean', example: false },
+        currentStreak: { type: 'number', example: 3 },
+        longestStreak: { type: 'number', example: 5 },
+        newBadges: { type: 'array', items: { type: 'string' } },
+        message: { type: 'string', example: 'Daily warmup completed!' },
+      },
+    },
+  },
 };
 
 // 6. Weekly Leaderboard Router Schemas
@@ -615,17 +705,24 @@ export const leaderboardSchema: FastifySchema = {
   tags: ['Leaderboard'],
   response: {
     200: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          userId: { type: 'string', example: 'user-uuid' },
-          name: { type: 'string', example: 'John Doe' },
-          avatarUrl: { type: 'string', example: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=John' },
-          totalXp: { type: 'number', example: 550 },
-          level: { type: 'number', example: 2 },
-          rank: { type: 'number', example: 1 }
-        }
+      type: 'object',
+      properties: {
+        leaderboard: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', example: 'user-uuid' },
+              name: { type: 'string', example: 'John Doe' },
+              avatarUrl: { type: ['string', 'null'], example: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=John' },
+              totalXp: { type: 'number', example: 550 },
+              level: { type: 'number', example: 2 },
+              rank: { type: 'number', example: 1 }
+            }
+          }
+        },
+        currentUserRank: { type: ['number', 'null'], example: 1 },
+        currentUserXp: { type: 'number', example: 550 }
       }
     }
   }
@@ -1601,14 +1698,21 @@ export const getFeatureFlagsSchema: FastifySchema = {
   security: [{ cookieAuth: [] }],
   response: {
     200: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string', example: 'ff-001' },
-          name: { type: 'string', example: 'new_quiz_ui' },
-          enabled: { type: 'boolean', example: true },
-          rolloutPercent: { type: 'number', example: 50 }
+      type: 'object',
+      properties: {
+        flags: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', example: 'ff-001' },
+              key: { type: 'string', example: 'new_quiz_ui' },
+              description: { type: ['string', 'null'], example: 'Enable new UI' },
+              enabled: { type: 'boolean', example: true },
+              rolloutPct: { type: 'number', example: 100 },
+              updatedAt: { type: 'string', example: '2026-09-20T12:00:00Z' }
+            }
+          }
         }
       }
     }
@@ -1638,13 +1742,20 @@ export const getCacheKeysSchema: FastifySchema = {
   security: [{ cookieAuth: [] }],
   response: {
     200: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          key: { type: 'string', example: 'leaderboard:global' },
-          ttlSeconds: { type: 'number', example: 300 }
-        }
+      type: 'object',
+      properties: {
+        cacheKeys: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              key: { type: 'string', example: 'leaderboard:global' },
+              ttlSeconds: { type: 'number', example: 300 }
+            }
+          }
+        },
+        totalKeys: { type: 'number', example: 0 },
+        message: { type: 'string', example: 'In-process cache active.' }
       }
     }
   }

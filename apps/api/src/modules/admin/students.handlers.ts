@@ -1,8 +1,9 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, inArray } from 'drizzle-orm';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 import * as bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
 // 1. GET ALL STUDENTS
 export const getStudentsHandler = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -65,9 +66,11 @@ export const suspendStudentHandler = async (request: FastifyRequest<{ Params: { 
 export const resetStudentPasswordHandler = async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
   const { id } = request.params;
   try {
-    // Force reset their password to "password123"
-    const newHash = await bcrypt.hash('password123', 10);
+    const tempPassword = crypto.randomBytes(4).toString('hex') + 'A1!';
+    const newHash = await bcrypt.hash(tempPassword, 10);
     await db.update(schema.users).set({ passwordHash: newHash, forcePasswordReset: true }).where(eq(schema.users.id, id));
+
+    console.log(`\n\n=== [INFO] MOCK EMAIL SERVICE ===\nTo Student ID: ${id}\nSubject: Temporary Password Reset\nMessage: Your account password has been reset by an Administrator. Your temporary password is '${tempPassword}'. You will be prompted to choose a new password upon logging in.\n=================================\n`);
 
     await db.insert(schema.auditLogs).values({
       action: 'ADMIN_PASSWORD_RESET',
@@ -75,7 +78,7 @@ export const resetStudentPasswordHandler = async (request: FastifyRequest<{ Para
       userId: request.user!.userId
     });
 
-    reply.status(200).send({ success: true, message: 'Password reset to default (password123)' });
+    reply.status(200).send({ success: true, tempPassword, message: `Password reset successfully. Temporary password: ${tempPassword}` });
   } catch (error) {
     console.error('[ERROR] Error resetting student password:', error);
     reply.status(500).send({ error: 'Internal Server Error' });
@@ -264,29 +267,40 @@ export const bulkEnrollStudentsHandler = async (
       return;
     }
 
-    let enrolledCount = 0;
-    for (const userId of userIds) {
-      const existing = await db.select()
-        .from(schema.orders)
-        .where(and(
-          eq(schema.orders.userId, userId),
+    if (!userIds || userIds.length === 0) {
+      reply.status(400).send({ error: 'Bad Request', message: 'userIds array is required' });
+      return;
+    }
+
+    // Single query to find existing enrollments
+    const existingOrders = await db
+      .select({ userId: schema.orders.userId })
+      .from(schema.orders)
+      .where(
+        and(
+          inArray(schema.orders.userId, userIds),
           eq(schema.orders.courseId, courseId),
           eq(schema.orders.status, 'SUCCESS')
-        ))
-        .limit(1);
+        )
+      );
 
-      if (existing.length === 0) {
-        await db.insert(schema.orders).values({
-          userId,
-          courseId,
-          status: 'SUCCESS',
-          amount: course.price,
-          transactionId: `BULK_${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-          createdAt: new Date(),
-        });
-        enrolledCount++;
-      }
+    const alreadyEnrolledIds = new Set(existingOrders.map((o) => o.userId));
+    const toEnrollIds = userIds.filter((id) => !alreadyEnrolledIds.has(id));
+
+    if (toEnrollIds.length > 0) {
+      const bulkRows = toEnrollIds.map((userId) => ({
+        userId,
+        courseId,
+        status: 'SUCCESS' as const,
+        amount: course.price,
+        transactionId: `BULK_${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+        createdAt: new Date(),
+      }));
+
+      await db.insert(schema.orders).values(bulkRows);
     }
+
+    const enrolledCount = toEnrollIds.length;
 
     await db.insert(schema.auditLogs).values({
       action: 'ADMIN_BULK_ENROLL',

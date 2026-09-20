@@ -8,6 +8,13 @@
       "when": 1779278045010,
       "tag": "0000_spicy_lady_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789906140817,
+      "tag": "0001_plain_stone_men",
+      "breakpoints": true
     }
   ]
 }

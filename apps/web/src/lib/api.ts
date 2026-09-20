@@ -1,4 +1,4 @@
-// API client wrapper for decoupled Fastify communication
+// API client wrapper for Fastify backend communication with automatic 401 token refresh
 
 const getLocale = (): string => {
   if (typeof window !== 'undefined') {
@@ -7,22 +7,66 @@ const getLocale = (): string => {
   return 'en';
 };
 
+let refreshPromise: Promise<boolean> | null = null;
+
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers || {});
-  
-  // Set JSON content-type if body is provided and not FormData
+
   if (options.body && !(options.body instanceof FormData) && typeof options.body === 'string') {
     headers.set('Content-Type', 'application/json');
   }
 
-  // Inject user locale for dynamic database syllabus translations fallback
   headers.set('Accept-Language', getLocale());
 
   const response = await fetch(path, {
     ...options,
     headers,
-    credentials: 'include', // Crucial for HttpOnly cookies authentication
+    credentials: 'include',
   });
+
+  const isAuthEndpoint =
+    path.includes('/api/auth/login') ||
+    path.includes('/api/auth/signup') ||
+    path.includes('/api/auth/refresh');
+
+  if (response.status === 401 && !isAuthEndpoint) {
+    if (!refreshPromise) {
+      refreshPromise = fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+      })
+        .then((r) => r.ok)
+        .catch(() => false);
+    }
+
+    const refreshed = await refreshPromise;
+    refreshPromise = null;
+
+    if (refreshed) {
+      // Retry original request once
+      const retryResponse = await fetch(path, {
+        ...options,
+        headers,
+        credentials: 'include',
+      });
+
+      if (!retryResponse.ok) {
+        let errMessage = 'An unexpected error occurred';
+        try {
+          const errData = await retryResponse.json();
+          errMessage = errData.message || errData.error || errMessage;
+        } catch {
+          // Keep fallback
+        }
+        throw new Error(errMessage);
+      }
+
+      if (retryResponse.status === 204) {
+        return {} as T;
+      }
+      return retryResponse.json();
+    }
+  }
 
   if (!response.ok) {
     let errorMessage = 'An unexpected error occurred';
@@ -35,7 +79,6 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     throw new Error(errorMessage);
   }
 
-  // Handle empty or 204 responses
   if (response.status === 204) {
     return {} as T;
   }

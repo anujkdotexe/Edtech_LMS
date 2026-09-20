@@ -113,13 +113,19 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
     }
   };
 
-  const handleCompleteLesson = () => {
-    setLessonCompleted(true);
-    setXpAwarded(true);
-    // Refresh student profile progress
-    setTimeout(() => {
-      fetchProfile();
-    }, 1000);
+  const handleCompleteLesson = async () => {
+    if (!activeLesson) return;
+    try {
+      await apiFetch<{ success: boolean; message: string; xpAwarded: number }>(
+        `/api/lessons/${activeLesson.id}/complete`,
+        { method: 'POST' }
+      );
+      setLessonCompleted(true);
+      setXpAwarded(true);
+      await fetchProfile();
+    } catch (err) {
+      console.error('Failed to complete lesson:', err);
+    }
   };
 
   if (!isAuthenticated) return null;

@@ -52,7 +52,7 @@ export default function ApiHealthPage() {
       category: 'System',
       access: 'Public',
       description: 'Standard system health indicator. Returns system status and time parameters.',
-      testPath: 'http://localhost:4000/health'
+      testPath: '/health'
     },
     {
       id: 'courses-get',

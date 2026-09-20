@@ -10,6 +10,7 @@ export interface UserStats {
   currentStreak: number;
   longestStreak: number;
   lastActiveDate: string | null;
+  warmupCompletedToday?: boolean;
 }
 
 export interface UnlockedBadge {
@@ -47,6 +48,7 @@ export interface UserProfile {
   avatarUrl: string | null;
   forcePasswordReset?: boolean;
   impersonatedBy?: string;
+  lastLoginAt?: string | null;
   stats: UserStats;
   badges: UnlockedBadge[];
   activityFeed?: ActivityFeedItem[];
@@ -54,16 +56,27 @@ export interface UserProfile {
   quizHistory?: QuizHistoryItem[];
 }
 
+export interface UserAuthProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: 'STUDENT' | 'ADMIN' | 'DEVELOPER';
+  avatarUrl: string | null;
+  forcePasswordReset?: boolean;
+  lastLoginAt?: string | null;
+}
+
 interface AuthState {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
+  checkSession: () => Promise<UserAuthProfile | null>;
   fetchProfile: () => Promise<UserProfile | null>;
   login: (credentials: { email: string; password?: string }) => Promise<void>;
-  signup: (userData: { name: string; email: string; password?: string; avatarUrl: string }) => Promise<void>;
+  signup: (userData: { name: string; email: string; password?: string; avatarUrl?: string }) => Promise<void>;
   googleLogin: (userData: { name: string; email: string; avatarUrl?: string }) => Promise<void>;
   logout: () => Promise<void>;
   unimpersonate: () => Promise<void>;
@@ -76,13 +89,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: true,
   error: null,
 
+  // Lightweight session check for app shells and guards
+  checkSession: async () => {
+    try {
+      const me = await apiFetch<UserAuthProfile>('/api/auth/me');
+      set((state) => ({
+        user: state.user
+          ? { ...state.user, ...me }
+          : ({
+              ...me,
+              stats: {
+                totalXp: 0,
+                level: 1,
+                xpInLevel: 0,
+                xpNeededForNextLevel: 250,
+                progressPercent: 0,
+                currentStreak: 0,
+                longestStreak: 0,
+                lastActiveDate: null,
+                warmupCompletedToday: false,
+              },
+              badges: [],
+              activityFeed: [],
+              purchaseHistory: [],
+              quizHistory: [],
+            } as UserProfile),
+        isAuthenticated: true,
+        isLoading: false,
+      }));
+      return me;
+    } catch {
+      set({ user: null, isAuthenticated: false, isLoading: false });
+      return null;
+    }
+  },
+
   fetchProfile: async () => {
     set({ isLoading: true, error: null });
     try {
       const user = await apiFetch<UserProfile>('/api/profile');
       set({ user, isAuthenticated: true, isLoading: false });
       return user;
-    } catch (err: any) {
+    } catch {
       set({ user: null, isAuthenticated: false, isLoading: false });
       return null;
     }
@@ -91,12 +139,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (credentials) => {
     set({ isLoading: true, error: null });
     try {
-      await apiFetch('/api/auth/login', {
+      const authProfile = await apiFetch<UserAuthProfile>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify(credentials),
       });
-      const user = await apiFetch<UserProfile>('/api/profile');
-      set({ user, isAuthenticated: true, isLoading: false });
+
+      set((state) => ({
+        user: {
+          ...authProfile,
+          stats: state.user?.stats || {
+            totalXp: 0,
+            level: 1,
+            xpInLevel: 0,
+            xpNeededForNextLevel: 250,
+            progressPercent: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            lastActiveDate: null,
+          },
+          badges: state.user?.badges || [],
+        },
+        isAuthenticated: true,
+        isLoading: false,
+      }));
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
       throw err;
@@ -106,13 +171,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signup: async (userData) => {
     set({ isLoading: true, error: null });
     try {
-      await apiFetch('/api/auth/signup', {
+      const authProfile = await apiFetch<UserAuthProfile>('/api/auth/signup', {
         method: 'POST',
         body: JSON.stringify(userData),
       });
-      // Signup automatically logs the user in on the backend
-      const user = await apiFetch<UserProfile>('/api/profile');
-      set({ user, isAuthenticated: true, isLoading: false });
+
+      set({
+        user: {
+          ...authProfile,
+          stats: {
+            totalXp: 0,
+            level: 1,
+            xpInLevel: 0,
+            xpNeededForNextLevel: 250,
+            progressPercent: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            lastActiveDate: null,
+          },
+          badges: [],
+          activityFeed: [],
+          purchaseHistory: [],
+          quizHistory: [],
+        },
+        isAuthenticated: true,
+        isLoading: false,
+      });
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
       throw err;
@@ -122,12 +206,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   googleLogin: async (userData) => {
     set({ isLoading: true, error: null });
     try {
-      await apiFetch('/api/auth/google', {
+      const authProfile = await apiFetch<UserAuthProfile>('/api/auth/google', {
         method: 'POST',
         body: JSON.stringify(userData),
       });
-      const user = await apiFetch<UserProfile>('/api/profile');
-      set({ user, isAuthenticated: true, isLoading: false });
+
+      set((state) => ({
+        user: {
+          ...authProfile,
+          stats: state.user?.stats || {
+            totalXp: 0,
+            level: 1,
+            xpInLevel: 0,
+            xpNeededForNextLevel: 250,
+            progressPercent: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            lastActiveDate: null,
+          },
+          badges: state.user?.badges || [],
+        },
+        isAuthenticated: true,
+        isLoading: false,
+      }));
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
       throw err;
@@ -138,7 +239,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       await apiFetch('/api/auth/logout', { method: 'POST' });
-    } catch (err) {
+    } catch {
       // Ignore network errors on logout, reset local state anyway
     } finally {
       set({ user: null, isAuthenticated: false, isLoading: false });
@@ -149,8 +250,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       await apiFetch('/api/dev/unimpersonate', { method: 'POST' });
-      const user = await apiFetch<UserProfile>('/api/profile');
-      set({ user, isAuthenticated: true, isLoading: false });
+      await get().checkSession();
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
     }

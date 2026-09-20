@@ -1,6 +1,6 @@
 // Rule: No emojis in source code. Use plain text labels like [OK], [ERROR], [INFO], [WARN].
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { sql, count, sum, eq, avg } from 'drizzle-orm';
+import { sql, count, sum, eq, avg, inArray } from 'drizzle-orm';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 
@@ -113,16 +113,34 @@ export const getCourseAnalyticsHandler = async (request: FastifyRequest, reply: 
       .from(schema.orders)
       .where(eq(schema.orders.courseId, courseId));
 
-    const enrolledCount = enrolledResult.enrolledCount || 1;
+    const enrolledCount = enrolledResult ? Number(enrolledResult.enrolledCount) : 0;
 
-    // Build drop-off analysis using simulated dropoff factor per lesson
+    const lessonIds = lessons.map((l) => l.lessonId);
+    let completionMap = new Map<string, number>();
+
+    if (lessonIds.length > 0) {
+      const completionsPerLesson = await db
+        .select({
+          lessonId: schema.lessonCompletions.lessonId,
+          completionCount: count(),
+        })
+        .from(schema.lessonCompletions)
+        .where(inArray(schema.lessonCompletions.lessonId, lessonIds))
+        .groupBy(schema.lessonCompletions.lessonId);
+
+      completionMap = new Map(
+        completionsPerLesson.map((c) => [c.lessonId, Number(c.completionCount)])
+      );
+    }
+
+    let prevRate = 100;
     const dropoffAnalysis = lessons.map((lesson, idx) => {
-      const factor = Math.max(0.15, 0.95 - (idx * 0.08));
-      const completionCount = Math.round(enrolledCount * factor);
-      const completionRate = Math.round(factor * 100);
-      const previousFactor = idx > 0 ? Math.max(0.15, 0.95 - ((idx - 1) * 0.08)) : 1.0;
-      const previousRate = idx > 0 ? Math.round(previousFactor * 100) : 100;
-      const dropoffPct = Math.max(0, previousRate - completionRate);
+      const completionCount = completionMap.get(lesson.lessonId) || 0;
+      const baseCount = Math.max(enrolledCount, completionCount, 1);
+      const completionRate = Math.min(100, Math.round((completionCount / baseCount) * 100));
+      const dropoffPct = idx === 0 ? 0 : Math.max(0, prevRate - completionRate);
+      prevRate = completionRate;
+
       return {
         lessonId: lesson.lessonId,
         position: lesson.orderIndex + 1,

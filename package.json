@@ -7,7 +7,7 @@
     "pnpm": ">=8.0.0"
   },
   "scripts": {
-    "dev": "pnpm --filter=@lms/api dev & pnpm --filter=@lms/web dev",
+    "dev": "pnpm --filter @lms/api --filter @lms/web --parallel dev",
     "build": "pnpm --recursive build",
     "lint": "pnpm --recursive lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
@@ -15,6 +15,6 @@
     "db:seed": "pnpm --filter=@lms/api db:seed"
   },
   "devDependencies": {
-    "prettier": "^3.2.5"
+    "prettier": "^3.9.8"
   }
 }

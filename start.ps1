@@ -21,15 +21,10 @@ Set-Location ../..
 
 Write-Host "[OK] Setup complete. Starting servers..." -ForegroundColor Green
 
-# Start backend and frontend concurrently in separate windows
-Start-Process -FilePath "pnpm" -ArgumentList "--filter=@lms/api", "dev" -WindowStyle Normal -NoNewWindow
-Start-Process -FilePath "pnpm" -ArgumentList "--filter=@lms/web", "dev" -WindowStyle Normal -NoNewWindow
+# Start backend and frontend concurrently in parallel
+Write-Host "[INFO] Frontend will run at http://localhost:3000" -ForegroundColor Blue
+Write-Host "[INFO] Backend  will run at http://localhost:4000" -ForegroundColor Blue
+Write-Host "[INFO] Press Ctrl+C to stop both servers." -ForegroundColor DarkGray
 
-Write-Host "[INFO] Frontend is running at http://localhost:3000" -ForegroundColor Blue
-Write-Host "[INFO] Backend  is running at http://localhost:4000" -ForegroundColor Blue
-Write-Host "[INFO] Press Ctrl+C to stop (you may need to manually close the node processes)." -ForegroundColor DarkGray
+pnpm --filter @lms/api --filter @lms/web --parallel dev
 
-# Keep script alive
-while ($true) {
-    Start-Sleep -Seconds 1
-}

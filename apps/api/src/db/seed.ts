@@ -14,6 +14,9 @@ async function main() {
   try {
     // 1. Clean existing tables
     console.log('[INFO] Purging old database tables...');
+    await db.delete(schema.lessonCompletions);
+    await db.delete(schema.dailyWarmupCompletions);
+    await db.delete(schema.featureFlags);
     await db.delete(schema.auditLogs);
     await db.delete(schema.orders);
     await db.delete(schema.quizAttempts);
@@ -480,6 +483,15 @@ async function main() {
       transactionId: 'txn_free_unlocked',
       amount: '0.00',
     });
+
+    // 13. Provision initial feature flags
+    console.log('[INFO] Seeding default feature flags...');
+    await db.insert(schema.featureFlags).values([
+      { key: 'courseRecommendations', enabled: true, description: 'Enable ML course recommendations' },
+      { key: 'streakMultiplier', enabled: true, description: 'Double XP on 7+ day streaks' },
+      { key: 'maintenanceMode', enabled: false, description: 'Site-wide maintenance banner' },
+      { key: 'betaAnalytics', enabled: false, description: 'New analytics dashboard for admins' },
+    ]);
 
     console.log('[OK] Seeding process completed successfully!');
   } catch (error) {
