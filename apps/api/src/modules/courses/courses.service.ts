@@ -56,6 +56,11 @@ export class CoursesService {
       throw new NotFoundError('Course not found');
     }
 
+    const isAdminOrDev = !!currentUser && ['ADMIN', 'DEVELOPER'].includes(currentUser.role);
+    if (!course.isPublished && !isAdminOrDev) {
+      throw new NotFoundError('Course not found');
+    }
+
     const cTranslations = await CoursesRepository.findCourseTranslationsById(courseId);
     const courseTrans =
       cTranslations.find((t) => t.locale === requestedLocale) ||
@@ -173,18 +178,22 @@ export class CoursesService {
 
     // Verify course entitlement server-side
     const isAdminOrDev = ['ADMIN', 'DEVELOPER'].includes(user.role);
+    const [module] = await db
+      .select()
+      .from(schema.modules)
+      .where(eq(schema.modules.id, lesson.moduleId))
+      .limit(1);
+
+    if (!module) {
+      throw new NotFoundError('Course module not found');
+    }
+
+    const course = await CoursesRepository.findCourseById(module.courseId);
+    if (!course || (!course.isPublished && !isAdminOrDev)) {
+      throw new NotFoundError('Course not found');
+    }
+
     if (!lesson.isFreePreview && !isAdminOrDev) {
-      const [module] = await db
-        .select()
-        .from(schema.modules)
-        .where(eq(schema.modules.id, lesson.moduleId))
-        .limit(1);
-
-      if (!module) {
-        throw new NotFoundError('Course module not found');
-      }
-
-      const course = await CoursesRepository.findCourseById(module.courseId);
       if (course && course.isPremium) {
         const orders = await db
           .select()

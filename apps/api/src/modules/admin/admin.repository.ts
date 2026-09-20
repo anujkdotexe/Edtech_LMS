@@ -183,34 +183,43 @@ export class AdminRepository {
   }
 
   static async bulkEnrollStudents(studentIds: string[], courseId: string, coursePrice: string, adminUserId: string) {
-    return db.transaction(async (tx) => {
-      let enrolledCount = 0;
-      for (const studentId of studentIds) {
-        const existing = await tx
-          .select()
-          .from(schema.orders)
-          .where(and(eq(schema.orders.userId, studentId), eq(schema.orders.courseId, courseId), eq(schema.orders.status, 'SUCCESS')))
-          .limit(1);
+    if (studentIds.length === 0) return 0;
 
-        if (existing.length === 0) {
-          await tx.insert(schema.orders).values({
-            userId: studentId,
-            courseId,
-            amount: coursePrice,
-            status: 'SUCCESS',
-            transactionId: `ADMIN_BULK_${Date.now()}_${studentId.slice(0, 4)}`,
-          });
-          enrolledCount++;
-        }
+    return db.transaction(async (tx) => {
+      // Find all existing successful orders for these students in this course
+      const existingOrders = await tx
+        .select({ userId: schema.orders.userId })
+        .from(schema.orders)
+        .where(
+          and(
+            inArray(schema.orders.userId, studentIds),
+            eq(schema.orders.courseId, courseId),
+            eq(schema.orders.status, 'SUCCESS')
+          )
+        );
+
+      const alreadyEnrolledUserIds = new Set(existingOrders.map((o) => o.userId));
+      const toEnrollUserIds = studentIds.filter((id) => !alreadyEnrolledUserIds.has(id));
+
+      if (toEnrollUserIds.length > 0) {
+        const orderValues = toEnrollUserIds.map((userId) => ({
+          userId,
+          courseId,
+          amount: coursePrice,
+          status: 'SUCCESS' as const,
+          transactionId: `ADMIN_BULK_${Date.now()}_${userId.slice(0, 4)}`,
+        }));
+
+        await tx.insert(schema.orders).values(orderValues);
       }
 
       await tx.insert(schema.auditLogs).values({
         action: 'ADMIN_BULK_ENROLLMENT',
-        details: `Admin bulk enrolled ${enrolledCount} students into course ${courseId}`,
+        details: `Admin bulk enrolled ${toEnrollUserIds.length} students into course ${courseId}`,
         userId: adminUserId,
       });
 
-      return enrolledCount;
+      return toEnrollUserIds.length;
     });
   }
 

@@ -50,7 +50,6 @@ export default function DashboardPage() {
         apiFetch<QuizItem[]>('/api/quizzes'),
         apiFetch<{ leaderboard: any[]; currentUserRank?: number }>('/api/leaderboard'),
         apiFetch<{ dailyTip?: string }>('/api/public/settings'),
-        fetchProfile(),
       ]);
 
       if (coursesData.status === 'fulfilled') setCourses(coursesData.value);
@@ -111,7 +110,7 @@ export default function DashboardPage() {
   const activeCourse = useMemo(() => {
     if (!courses.length) return null;
     const unlocked = courses.find((c) => c.isUnlocked || Number(c.price) === 0);
-    return unlocked || courses[0] || null;
+    return unlocked || null;
   }, [courses]);
 
   const isDev = user?.role === 'DEVELOPER' || !!user?.impersonatedBy;

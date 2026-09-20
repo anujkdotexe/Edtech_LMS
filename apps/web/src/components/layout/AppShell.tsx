@@ -23,13 +23,11 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
   useEffect(() => {
     const isPublicRoute = pathname === '/login' || pathname.startsWith('/reset-password');
-    if (!isPublicRoute) {
-      checkSession().then((me) => {
-        if (me) {
-          fetchProfile();
-        }
-      });
-    }
+    checkSession().then((me) => {
+      if (me && !isPublicRoute) {
+        fetchProfile();
+      }
+    });
   }, [checkSession, fetchProfile, pathname]);
 
   // Auth & Client-side Route Guard

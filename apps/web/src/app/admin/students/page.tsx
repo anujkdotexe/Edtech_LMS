@@ -95,11 +95,14 @@ export default function AdminStudentsPage() {
     if (!addName || !addEmail) return;
     setAdding(true);
     try {
-      await apiFetch('/api/admin/students', {
+      const res = await apiFetch<{ success: boolean; tempPassword?: string; message?: string }>('/api/admin/students', {
         method: 'POST',
         body: JSON.stringify({ name: addName, email: addEmail }),
       });
-      alert('Student invited successfully! Credentials email dispatched.');
+      const msg = res.tempPassword
+        ? `Student invited successfully!\n\nEmail: ${addEmail}\nTemporary Password: ${res.tempPassword}`
+        : 'Student invited successfully! Credentials email dispatched.';
+      alert(msg);
       setIsAddModalOpen(false);
       setAddName('');
       setAddEmail('');
@@ -137,7 +140,7 @@ export default function AdminStudentsPage() {
     if (!revokeStudent || !revokeCourseId) return;
     setRevoking(true);
     try {
-      await apiFetch('/api/admin/students/revoke', {
+      await apiFetch('/api/admin/students/revoke-course', {
         method: 'POST',
         body: JSON.stringify({ userId: revokeStudent.id, courseId: revokeCourseId }),
       });

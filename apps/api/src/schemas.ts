@@ -453,7 +453,16 @@ export const completeLessonSchema: FastifySchema = {
         longestStreak: { type: 'number', example: 5 },
         didLevelUp: { type: 'boolean', example: false },
         newLevel: { type: 'number', example: 1 },
-        newBadges: { type: 'array', items: { type: 'string' } },
+        newBadges: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              badgeId: { type: 'string', example: 'scholar_1' },
+              name: { type: 'string', example: 'First Steps Scholar' },
+            },
+          },
+        },
         message: { type: 'string', example: 'Lesson completed' },
       },
     },
@@ -728,7 +737,16 @@ export const claimWarmupSchema: FastifySchema = {
         didLevelUp: { type: 'boolean', example: false },
         currentStreak: { type: 'number', example: 3 },
         longestStreak: { type: 'number', example: 5 },
-        newBadges: { type: 'array', items: { type: 'string' } },
+        newBadges: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              badgeId: { type: 'string', example: 'scholar_1' },
+              name: { type: 'string', example: 'First Steps Scholar' },
+            },
+          },
+        },
         message: { type: 'string', example: 'Daily warmup completed!' },
       },
     },
@@ -1099,7 +1117,16 @@ export const adminAddStudentSchema: FastifySchema = {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'Student account created and welcome email dispatched successfully.' }
+        message: { type: 'string', example: 'Student account created and welcome email dispatched successfully.' },
+        tempPassword: { type: 'string', example: 'a1b2c3d4A1!' },
+        student: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'user-uuid' },
+            name: { type: 'string', example: 'Alice Smith' },
+            email: { type: 'string', example: 'alice@lms.local' }
+          }
+        }
       }
     }
   }
@@ -1110,9 +1137,14 @@ export const adminBulkEnrollStudentsSchema: FastifySchema = {
   tags: ['Admin CRM'],
   body: {
     type: 'object',
-    required: ['userIds', 'courseId'],
+    required: ['courseId'],
     properties: {
       userIds: {
+        type: 'array',
+        items: { type: 'string' },
+        example: ['student-uuid-1', 'student-uuid-2']
+      },
+      studentIds: {
         type: 'array',
         items: { type: 'string' },
         example: ['student-uuid-1', 'student-uuid-2']
@@ -1125,6 +1157,7 @@ export const adminBulkEnrollStudentsSchema: FastifySchema = {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
+        enrolledCount: { type: 'number', example: 2 },
         message: { type: 'string', example: 'Successfully enrolled 2 students' }
       }
     }
@@ -1136,9 +1169,10 @@ export const adminRevokeCourseAccessSchema: FastifySchema = {
   tags: ['Admin CRM'],
   body: {
     type: 'object',
-    required: ['userId', 'courseId'],
+    required: ['courseId'],
     properties: {
       userId: { type: 'string', example: 'student-uuid' },
+      studentId: { type: 'string', example: 'student-uuid' },
       courseId: { type: 'string', example: 'course-uuid' }
     }
   },
@@ -1158,9 +1192,10 @@ export const adminSendMessageSchema: FastifySchema = {
   tags: ['Admin CRM'],
   body: {
     type: 'object',
-    required: ['userId', 'subject', 'message'],
+    required: ['subject', 'message'],
     properties: {
       userId: { type: 'string', example: 'student-uuid' },
+      studentId: { type: 'string', example: 'student-uuid' },
       subject: { type: 'string', example: 'Syllabus Updates' },
       message: { type: 'string', example: 'Please review the new lessons added in CEFR B1' }
     }
@@ -1313,7 +1348,7 @@ export const adminCreateModuleSchema: FastifySchema = {
   },
   body: {
     type: 'object',
-    required: ['orderIndex', 'title', 'locale'],
+    required: ['title'],
     properties: {
       orderIndex: { type: 'number', example: 2 },
       title: { type: 'string', example: 'Intermediate Grammar' },
@@ -1325,6 +1360,7 @@ export const adminCreateModuleSchema: FastifySchema = {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
+        moduleId: { type: 'string', example: 'module-uuid' },
         module: {
           type: 'object',
           properties: {
@@ -1393,18 +1429,21 @@ export const adminCreateLessonSchema: FastifySchema = {
   tags: ['Admin Course Content'],
   params: {
     type: 'object',
-    required: ['moduleId'],
+    required: ['id'],
     properties: {
-      moduleId: { type: 'string', example: 'module-uuid' }
+      id: { type: 'string', description: 'Module ID', example: 'module-uuid' }
     }
   },
   body: {
     type: 'object',
-    required: ['orderIndex', 'title', 'summary', 'locale'],
+    required: ['title'],
     properties: {
       orderIndex: { type: 'number', example: 1 },
       title: { type: 'string', example: 'Introduction to Pronouns' },
       summary: { type: 'string', example: 'Learn about primary subject pronouns' },
+      lessonType: { type: 'string', enum: ['VIDEO', 'AUDIO', 'READING', 'PDF'], example: 'READING' },
+      durationSeconds: { type: 'number', example: 300 },
+      filePath: { type: 'string', example: '/public/uploads/sample.pdf' },
       locale: { type: 'string', example: 'en' }
     }
   },
@@ -1413,6 +1452,7 @@ export const adminCreateLessonSchema: FastifySchema = {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
+        lessonId: { type: 'string', example: 'lesson-uuid' },
         lesson: {
           type: 'object',
           properties: {
@@ -1442,6 +1482,9 @@ export const adminUpdateLessonSchema: FastifySchema = {
       orderIndex: { type: 'number', example: 2 },
       title: { type: 'string', example: 'Advanced Pronouns' },
       summary: { type: 'string', example: 'Summary of intermediate and advanced pronouns' },
+      lessonType: { type: 'string', enum: ['VIDEO', 'AUDIO', 'READING', 'PDF'], example: 'READING' },
+      durationSeconds: { type: 'number', example: 300 },
+      filePath: { type: 'string', example: '/public/uploads/sample.pdf' },
       locale: { type: 'string', example: 'en' }
     }
   },
@@ -1505,10 +1548,12 @@ export const adminCreateQuizSchema: FastifySchema = {
   tags: ['Admin Quiz Management'],
   body: {
     type: 'object',
-    required: ['courseId', 'xpReward', 'passingScore', 'title', 'description', 'locale'],
+    required: ['title'],
     properties: {
       courseId: { type: 'string', example: 'course-uuid' },
       xpReward: { type: 'number', example: 100 },
+      pointValue: { type: 'number', example: 50 },
+      difficulty: { type: 'string', enum: ['EASY', 'MEDIUM', 'HARD'], example: 'EASY' },
       passingScore: { type: 'number', example: 70 },
       title: { type: 'string', example: 'Grammar Assessment Quiz' },
       description: { type: 'string', example: 'Complete grammar multiple choice test' },
@@ -1520,6 +1565,7 @@ export const adminCreateQuizSchema: FastifySchema = {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
+        quizId: { type: 'string', example: 'quiz-uuid' },
         quiz: {
           type: 'object',
           properties: {
@@ -1548,6 +1594,8 @@ export const adminUpdateQuizSchema: FastifySchema = {
     type: 'object',
     properties: {
       xpReward: { type: 'number', example: 120 },
+      pointValue: { type: 'number', example: 60 },
+      difficulty: { type: 'string', enum: ['EASY', 'MEDIUM', 'HARD'], example: 'MEDIUM' },
       passingScore: { type: 'number', example: 75 },
       title: { type: 'string', example: 'Revised Grammar Assessment' },
       description: { type: 'string', example: 'Revised MCQ details' },
@@ -1598,10 +1646,15 @@ export const adminCreateQuestionSchema: FastifySchema = {
   },
   body: {
     type: 'object',
-    required: ['orderIndex', 'questionText', 'options', 'correctAnswer'],
+    required: ['questionText', 'optionA', 'optionB', 'optionC', 'optionD', 'correctOption'],
     properties: {
       orderIndex: { type: 'number', example: 1 },
       questionText: { type: 'string', example: 'What is 2 + 2?' },
+      optionA: { type: 'string', example: '3' },
+      optionB: { type: 'string', example: '4' },
+      optionC: { type: 'string', example: '5' },
+      optionD: { type: 'string', example: '6' },
+      correctOption: { type: 'string', enum: ['A', 'B', 'C', 'D'], example: 'B' },
       options: {
         type: 'array',
         items: { type: 'string' },
@@ -1615,6 +1668,7 @@ export const adminCreateQuestionSchema: FastifySchema = {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
+        questionId: { type: 'string', example: 'question-uuid' },
         question: {
           type: 'object',
           properties: {
@@ -1633,9 +1687,9 @@ export const adminUpdateQuestionSchema: FastifySchema = {
   tags: ['Admin Quiz Management'],
   params: {
     type: 'object',
-    required: ['questionId'],
+    required: ['id'],
     properties: {
-      questionId: { type: 'string', example: 'question-uuid' }
+      id: { type: 'string', description: 'Question ID', example: 'question-uuid' }
     }
   },
   body: {
@@ -1643,6 +1697,11 @@ export const adminUpdateQuestionSchema: FastifySchema = {
     properties: {
       orderIndex: { type: 'number', example: 2 },
       questionText: { type: 'string', example: 'What is 3 + 3?' },
+      optionA: { type: 'string', example: '5' },
+      optionB: { type: 'string', example: '6' },
+      optionC: { type: 'string', example: '7' },
+      optionD: { type: 'string', example: '8' },
+      correctOption: { type: 'string', enum: ['A', 'B', 'C', 'D'], example: 'B' },
       options: {
         type: 'array',
         items: { type: 'string' },

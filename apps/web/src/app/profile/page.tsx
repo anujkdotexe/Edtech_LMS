@@ -43,10 +43,10 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !user) {
       fetchProfile();
     }
-  }, [isAuthenticated, fetchProfile]);
+  }, [isAuthenticated, user, fetchProfile]);
 
   useEffect(() => {
     if (user) {

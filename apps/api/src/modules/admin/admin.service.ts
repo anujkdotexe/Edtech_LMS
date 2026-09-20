@@ -112,28 +112,41 @@ export class AdminService {
   }
 
   static async bulkEnroll(dto: BulkEnrollDto, adminUserId: string) {
+    const studentIds = dto.studentIds || dto.userIds || [];
+    if (studentIds.length === 0) {
+      return { count: 0 };
+    }
+
     const [course] = await db.select().from(schema.courses).where(eq(schema.courses.id, dto.courseId)).limit(1);
     if (!course) {
       throw new Error('COURSE_NOT_FOUND');
     }
 
     const coursePrice = String(course.price || 0);
-    const count = await AdminRepository.bulkEnrollStudents(dto.studentIds, dto.courseId, coursePrice, adminUserId);
+    const count = await AdminRepository.bulkEnrollStudents(studentIds, dto.courseId, coursePrice, adminUserId);
     return { count };
   }
 
   static async revokeCourse(dto: RevokeCourseDto, adminUserId: string) {
-    const count = await AdminRepository.revokeCourseAccess(dto.studentId, dto.courseId, adminUserId);
+    const studentId = dto.studentId || dto.userId;
+    if (!studentId) {
+      throw new Error('STUDENT_NOT_FOUND');
+    }
+    const count = await AdminRepository.revokeCourseAccess(studentId, dto.courseId, adminUserId);
     return { count };
   }
 
   static async sendMessage(dto: SendMessageDto, adminUserId: string) {
-    const student = await AdminRepository.findStudentById(dto.studentId);
+    const studentId = dto.studentId || dto.userId;
+    if (!studentId) {
+      throw new Error('STUDENT_NOT_FOUND');
+    }
+    const student = await AdminRepository.findStudentById(studentId);
     if (!student) {
       throw new Error('STUDENT_NOT_FOUND');
     }
 
-    await AdminRepository.logAdminMessage(dto.studentId, dto.subject, adminUserId);
+    await AdminRepository.logAdminMessage(studentId, dto.subject, adminUserId);
     return { success: true };
   }
 
@@ -215,7 +228,7 @@ export class AdminService {
       const existing = await AdminRepository.findUserByEmail(student.email);
       if (existing) continue;
 
-      const tempPass = 'temp_' + Math.random().toString(36).substring(2, 8);
+      const tempPass = crypto.randomBytes(4).toString('hex') + 'A1!';
       const passwordHash = await bcrypt.hash(tempPass, 10);
 
       await db.transaction(async (tx) => {

@@ -12,17 +12,20 @@ export interface CreateStudentDto {
 }
 
 export interface BulkEnrollDto {
-  studentIds: string[];
+  studentIds?: string[];
+  userIds?: string[];
   courseId: string;
 }
 
 export interface RevokeCourseDto {
-  studentId: string;
+  studentId?: string;
+  userId?: string;
   courseId: string;
 }
 
 export interface SendMessageDto {
-  studentId: string;
+  studentId?: string;
+  userId?: string;
   subject: string;
   message: string;
 }

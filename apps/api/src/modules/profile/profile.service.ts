@@ -203,16 +203,24 @@ export class ProfileService {
       throw new ValidationError('Daily warmup challenge ID and answer are required');
     }
 
-    const definedChallenge = WARMUP_CHALLENGES[challenge.challengeId];
-    if (!definedChallenge) {
-      throw new ValidationError('Invalid daily warmup challenge ID');
+    const todayStr = new Date().toISOString().split('T')[0];
+    const keys = Object.keys(WARMUP_CHALLENGES);
+    let hash = 0;
+    for (let i = 0; i < todayStr.length; i++) {
+      hash = (hash * 31 + todayStr.charCodeAt(i)) % keys.length;
+    }
+    const expectedChallengeKey = keys[Math.abs(hash) % keys.length];
+    const expectedChallenge = WARMUP_CHALLENGES[expectedChallengeKey];
+
+    if (challenge.challengeId !== expectedChallenge.id) {
+      throw new ValidationError('Submitted challenge ID does not match current daily challenge');
     }
 
+    const definedChallenge = expectedChallenge;
     if (challenge.answer.trim().toLowerCase() !== definedChallenge.correctAnswer.toLowerCase()) {
       throw new ValidationError('Incorrect answer for daily warmup challenge');
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
     const result = await ProfileRepository.claimDailyWarmupTx(userId, todayStr, 25);
 
     if (result.alreadyClaimed) {
