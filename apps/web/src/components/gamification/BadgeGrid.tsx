@@ -11,6 +11,7 @@ const ALL_SYSTEM_BADGES = [
   { id: 'scholar_1', name: 'First Steps', description: 'Passed your first language test or completed first step' },
   { id: 'streak_3', name: 'Dedicated Learner', description: 'Maintained a 3-day study streak' },
   { id: 'streak_7', name: 'Unstoppable Habit', description: 'Maintained a 7-day study streak' },
+  { id: 'centurion_streak', name: 'Centurion Streak', description: 'Maintained an epic 30-day study streak' },
   { id: 'quiz_master', name: 'Perfect Score', description: 'Scored 100% on a challenging quiz' },
   { id: 'level_5', name: 'Fluent Speaker', description: 'Reached Level 5 in curriculum' },
   { id: 'level_10', name: 'Grandmaster Linguist', description: 'Reached Level 10 of language mastery' },
@@ -20,7 +21,7 @@ export const BadgeGrid: React.FC<BadgeGridProps> = ({ unlockedBadges, className 
   const unlockedMap = new Map(unlockedBadges.map((b) => [b.badgeId, b]));
 
   return (
-    <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 ${className}`}>
+    <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 ${className}`}>
       {ALL_SYSTEM_BADGES.map((badge) => {
         const isUnlocked = unlockedMap.has(badge.id);
         const unlockedData = unlockedMap.get(badge.id);

@@ -106,9 +106,19 @@ export default function ProfilePage() {
       return;
     }
 
+    if (newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters.');
+      setSavingPassword(false);
+      return;
+    }
+
     try {
-      // Simulate client password change to satisfy the PRD forgot/change password flow on the free tier
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await apiFetch('/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify({
+          password: newPassword,
+        }),
+      });
       setPasswordSuccess(true);
       setCurrentPassword('');
       setNewPassword('');

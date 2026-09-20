@@ -16,6 +16,10 @@ interface Lesson {
   title: string;
   summary: string;
   filePath: string | null;
+  lessonType?: string;
+  durationSeconds?: number;
+  isFreePreview?: boolean;
+  isCompleted?: boolean;
 }
 
 interface Module {
@@ -33,6 +37,9 @@ interface CourseDetails {
   price: number;
   isPremium: boolean;
   isUnlocked: boolean;
+  progressPercent?: number;
+  totalLessonsCount?: number;
+  completedLessonsCount?: number;
   modules: Module[];
 }
 
@@ -69,10 +76,11 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
       const details = await apiFetch<CourseDetails>(`/api/courses/${id}`);
       setCourse(details);
       
-      // Auto-select first lesson if unlocked
+      // Auto-select first lesson
       if (details?.modules?.length > 0 && details.modules[0].lessons?.length > 0) {
         const firstLesson = details.modules[0].lessons[0];
         setActiveLesson(firstLesson);
+        setLessonCompleted(!!firstLesson.isCompleted);
       }
     } catch (err: any) {
       setError(err.message || 'Could not fetch course syllabus details');
@@ -83,7 +91,7 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
 
   const handleLessonSelect = (lesson: Lesson) => {
     setActiveLesson(lesson);
-    setLessonCompleted(false);
+    setLessonCompleted(!!lesson.isCompleted);
     setXpAwarded(false);
   };
 
@@ -117,7 +125,7 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
   };
 
   const handleCompleteLesson = async () => {
-    if (!activeLesson) return;
+    if (!activeLesson || !course) return;
     try {
       await apiFetch<{ success: boolean; message: string; xpAwarded: number }>(
         `/api/lessons/${activeLesson.id}/complete`,
@@ -125,6 +133,34 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
       );
       setLessonCompleted(true);
       setXpAwarded(true);
+
+      // Dynamically update course state locally
+      setCourse((prev) => {
+        if (!prev) return null;
+        let total = 0;
+        let completed = 0;
+        const updatedModules = prev.modules.map((m) => ({
+          ...m,
+          lessons: m.lessons.map((l) => {
+            total++;
+            const isComp = l.id === activeLesson.id ? true : !!l.isCompleted;
+            if (isComp) completed++;
+            return { ...l, isCompleted: isComp };
+          }),
+        }));
+        const newPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+        return {
+          ...prev,
+          progressPercent: newPercent,
+          completedLessonsCount: completed,
+          totalLessonsCount: total,
+          modules: updatedModules,
+        };
+      });
+
+      // Update active lesson state
+      setActiveLesson((prev) => (prev ? { ...prev, isCompleted: true } : null));
+
       await fetchProfile();
     } catch (err) {
       console.error('Failed to complete lesson:', err);
@@ -186,6 +222,25 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
           <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
             {course.description}
           </p>
+
+          {/* Dynamic Progress Bar */}
+          <div className="pt-2 max-w-md space-y-1.5">
+            <div className="flex justify-between text-xs font-bold text-slate-700">
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                Syllabus Progress
+              </span>
+              <span className="text-emerald-700 font-extrabold">
+                {course.progressPercent ?? 0}% ({course.completedLessonsCount ?? 0}/{course.totalLessonsCount ?? 0} completed)
+              </span>
+            </div>
+            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${course.progressPercent ?? 0}%` }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Purchase simulation widget embedded directly in course header */}
@@ -220,9 +275,14 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
         
         {/* Left Side: Modules & Lessons Tree Sidebar */}
         <section className="lg:col-span-4 bg-white border border-slate-100 rounded-xl shadow-premium p-5 space-y-5">
-          <h2 className="font-display font-extrabold text-slate-800 text-sm pb-2.5 border-b border-slate-100">
-            Syllabus Curriculum Modules
-          </h2>
+          <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+            <h2 className="font-display font-extrabold text-slate-800 text-sm">
+              Syllabus Curriculum
+            </h2>
+            <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+              {course.totalLessonsCount ?? 0} Lessons
+            </span>
+          </div>
 
           <div className="space-y-6">
             {course.modules.sort((a,b) => a.orderIndex - b.orderIndex).map((mod) => (
@@ -238,6 +298,7 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
                   {mod.lessons.sort((a,b) => a.orderIndex - b.orderIndex).map((lesson) => {
                     const isSelected = activeLesson?.id === lesson.id;
                     const isLocked = lesson.filePath === null;
+                    const isCompleted = !!lesson.isCompleted;
 
                     return (
                       <button
@@ -246,15 +307,26 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
                         className={`w-full text-left p-3 rounded-lg border text-xs font-semibold flex items-center justify-between gap-3 group transition ${isSelected ? 'bg-primary-light border-primary/30 text-primary' : 'bg-white border-transparent text-slate-600 hover:bg-slate-50'}`}
                       >
                         <span className="flex items-center gap-2 truncate">
-                          <FileText className={`w-4 h-4 shrink-0 ${isSelected ? 'text-primary' : 'text-slate-400'}`} />
-                          <span className="truncate">{lesson.title}</span>
+                          {isCompleted ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          ) : (
+                            <FileText className={`w-4 h-4 shrink-0 ${isSelected ? 'text-primary' : 'text-slate-400'}`} />
+                          )}
+                          <span className={`truncate ${isCompleted ? 'text-slate-900 font-bold' : ''}`}>{lesson.title}</span>
                         </span>
                         
-                        {isLocked ? (
-                          <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        ) : (
-                          <Play className={`w-3 h-3 transition shrink-0 opacity-0 group-hover:opacity-100 ${isSelected ? 'opacity-100 text-primary fill-primary' : 'text-slate-400'}`} />
-                        )}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isCompleted && (
+                            <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                              Done
+                            </span>
+                          )}
+                          {isLocked ? (
+                            <Lock className="w-3.5 h-3.5 text-slate-400" />
+                          ) : (
+                            <Play className={`w-3 h-3 transition opacity-0 group-hover:opacity-100 ${isSelected ? 'opacity-100 text-primary fill-primary' : 'text-slate-400'}`} />
+                          )}
+                        </div>
                       </button>
                     );
                   })}
@@ -296,15 +368,17 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
               </div>
 
               {/* Lesson Content Viewer */}
-              <div className="flex-1 my-6 flex flex-col">
+              <div className="flex-1 my-6 flex flex-col space-y-4">
                 {activeLesson.filePath ? (() => {
-                  const fp = activeLesson.filePath.toLowerCase();
-                  const isVideo = fp.endsWith('.mp4') || fp.endsWith('.webm') || fp.endsWith('.ogg');
-                  const isPdf = fp.endsWith('.pdf');
-                  // Normalise path: strip leading slash for public serving
-                  const publicUrl = activeLesson.filePath.startsWith('/') 
-                    ? activeLesson.filePath 
-                    : `/${activeLesson.filePath}`;
+                  const rawFp = activeLesson.filePath;
+                  const cleanFp = rawFp.startsWith('/') ? rawFp.slice(1) : rawFp;
+                  const publicUrl = cleanFp.startsWith('public/uploads/')
+                    ? `/${cleanFp}`
+                    : `/public/uploads/${cleanFp.replace(/^lessons\//, '')}`;
+
+                  const fpLower = cleanFp.toLowerCase();
+                  const isVideo = fpLower.endsWith('.mp4') || fpLower.endsWith('.webm') || fpLower.endsWith('.ogg');
+                  const isPdf = fpLower.endsWith('.pdf');
 
                   return (
                     <div className="w-full bg-slate-50 border border-slate-200/80 rounded-xl overflow-hidden flex flex-col shadow-inset">
@@ -337,9 +411,24 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
                         </div>
                       )}
 
+                      {/* Interactive Lesson Summary & Notes Deck */}
+                      <div className="p-4 bg-white border-t border-slate-100 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Lesson Learning Objectives &amp; Study Notes</h4>
+                        </div>
+                        <p className="text-xs text-slate-700 leading-relaxed">
+                          {activeLesson.summary}
+                        </p>
+                        <div className="bg-indigo-50/60 border border-indigo-100 rounded-lg p-3 text-[11px] text-indigo-900 flex items-start gap-2">
+                          <span className="font-bold shrink-0 text-indigo-700">Study Tip:</span>
+                          <span>Read through the vocabulary and grammar rules above carefully, practice pronunciation aloud, and mark this lesson as completed to earn +20 XP toward your next level tier!</span>
+                        </div>
+                      </div>
+
                       {/* Completion button bar */}
-                      <div className="px-4 py-3 border-t border-slate-200/40 flex justify-between items-center bg-white">
-                        <span className="text-[10px] text-slate-600 font-medium font-mono truncate max-w-[60%]">{activeLesson.filePath}</span>
+                      <div className="px-4 py-3 border-t border-slate-200/40 flex justify-between items-center bg-slate-50">
+                        <span className="text-[10px] text-slate-500 font-mono truncate max-w-[50%]">{publicUrl}</span>
                         {lessonCompleted ? (
                           <span className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 animate-[scaleIn_0.2s_ease-out]">
                             <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Lesson Completed! +20 XP

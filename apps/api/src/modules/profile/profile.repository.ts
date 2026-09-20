@@ -113,10 +113,14 @@ export class ProfileRepository {
     return rows.length > 0;
   }
 
-  static async updateUserProfile(userId: string, data: { name?: string; avatarUrl?: string }) {
+  static async updateUserProfile(
+    userId: string,
+    data: { name?: string; avatarUrl?: string; passwordHash?: string }
+  ) {
     const updates: any = { updatedAt: new Date() };
     if (data.name !== undefined) updates.name = data.name;
     if (data.avatarUrl !== undefined) updates.avatarUrl = data.avatarUrl;
+    if (data.passwordHash !== undefined) updates.passwordHash = data.passwordHash;
 
     const [updated] = await db
       .update(schema.users)

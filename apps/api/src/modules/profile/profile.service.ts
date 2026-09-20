@@ -1,3 +1,4 @@
+import bcrypt from 'bcrypt';
 import { ProfileRepository } from './profile.repository';
 import { NotFoundError, ValidationError } from '../../errors';
 import { calculateLevelStats } from '../../utils/xp';
@@ -161,12 +162,24 @@ export class ProfileService {
     };
   }
 
-  static async updateProfile(userId: string, data: { name?: string; avatarUrl?: string }) {
-    if (!data.name && !data.avatarUrl) {
+  static async updateProfile(userId: string, data: { name?: string; avatarUrl?: string; password?: string }) {
+    if (!data.name && !data.avatarUrl && !data.password) {
       throw new ValidationError('Nothing to update');
     }
 
-    const updated = await ProfileRepository.updateUserProfile(userId, data);
+    let passwordHash: string | undefined;
+    if (data.password) {
+      if (data.password.length < 6) {
+        throw new ValidationError('Password must be at least 6 characters');
+      }
+      passwordHash = await bcrypt.hash(data.password, 10);
+    }
+
+    const updated = await ProfileRepository.updateUserProfile(userId, {
+      name: data.name,
+      avatarUrl: data.avatarUrl,
+      passwordHash,
+    });
     if (!updated) {
       throw new NotFoundError('User not found');
     }

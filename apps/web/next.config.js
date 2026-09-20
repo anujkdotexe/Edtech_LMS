@@ -17,6 +17,10 @@ const nextConfig = {
         source: '/health',
         destination: 'http://localhost:4000/health',
       },
+      {
+        source: '/public/uploads/:path*',
+        destination: 'http://localhost:4000/public/uploads/:path*',
+      },
     ]
   },
 }
