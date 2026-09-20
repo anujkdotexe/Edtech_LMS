@@ -289,7 +289,20 @@ export default function ApiHealthPage() {
     }));
 
     const start = performance.now();
-    const fetchPath = endpoint.testPath || endpoint.path;
+    let fetchPath = endpoint.testPath || endpoint.path;
+    if (endpoint.id === 'course-get-by-id') {
+      try {
+        const coursesRes = await fetch('/api/courses');
+        if (coursesRes.ok) {
+          const coursesList = await coursesRes.json();
+          if (Array.isArray(coursesList) && coursesList.length > 0 && coursesList[0].id) {
+            fetchPath = `/api/courses/${coursesList[0].id}`;
+          }
+        }
+      } catch {
+        // Fallback to configured path
+      }
+    }
     const fetchOptions = endpoint.testOptions || {
       method: endpoint.method,
       credentials: 'include'

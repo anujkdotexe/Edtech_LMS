@@ -27,10 +27,10 @@ export class ProfileController {
       return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'User context is missing' });
     }
 
-    const { name, avatarUrl } = request.body as { name?: string; avatarUrl?: string };
+    const { name, avatarUrl, password } = request.body as { name?: string; avatarUrl?: string; password?: string };
 
     try {
-      const updated = await ProfileService.updateProfile(request.user.userId, { name, avatarUrl });
+      const updated = await ProfileService.updateProfile(request.user.userId, { name, avatarUrl, password });
       return sendSuccess(reply, updated);
     } catch (error) {
       return handleControllerError(reply, error, 'Failed to update profile');

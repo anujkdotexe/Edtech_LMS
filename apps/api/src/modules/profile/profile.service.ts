@@ -179,6 +179,7 @@ export class ProfileService {
       name: data.name,
       avatarUrl: data.avatarUrl,
       passwordHash,
+      forcePasswordReset: data.password ? false : undefined,
     });
     if (!updated) {
       throw new NotFoundError('User not found');

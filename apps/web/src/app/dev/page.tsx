@@ -74,7 +74,7 @@ export default function DevConsolePage() {
   const [targetEmail, setTargetEmail] = useState('');
   
   // CRM Import state
-  const [csvText, setCsvText] = useState("Name,Email\nDavid Vance,david@lms.local\nElena Rostova,elena@lms.local");
+  const [csvText, setCsvText] = useState('');
   const [crmMessage, setCrmMessage] = useState<string | null>(null);
 
   // Overrides state
@@ -440,6 +440,7 @@ export default function DevConsolePage() {
                   rows={6}
                   value={csvText}
                   onChange={(e) => setCsvText(e.target.value)}
+                  placeholder={"Name,Email\nDavid Vance,david@lms.local\nElena Rostova,elena@lms.local"}
                   className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono text-xs focus:outline-none focus:border-primary focus:bg-white transition"
                 ></textarea>
               </div>

@@ -10,6 +10,8 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
+  const isForced = searchParams.get('forced') === 'true';
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,10 +19,10 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (!token) {
+    if (!token && !isForced) {
       setErrorMsg('Invalid or missing reset token.');
     }
-  }, [token]);
+  }, [token, isForced]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,20 +32,32 @@ export default function ResetPasswordPage() {
       setErrorMsg('Passwords do not match');
       return;
     }
+
+    if (password.length < 6) {
+      setErrorMsg('Password must be at least 6 characters');
+      return;
+    }
     
-    if (!token) return;
+    if (!token && !isForced) return;
 
     setLoading(true);
     try {
-      await apiFetch('/api/auth/reset-password', {
-        method: 'POST',
-        body: JSON.stringify({ token, newPassword: password, password }),
-      });
+      if (isForced) {
+        await apiFetch('/api/profile', {
+          method: 'PUT',
+          body: JSON.stringify({ password }),
+        });
+      } else {
+        await apiFetch('/api/auth/reset-password', {
+          method: 'POST',
+          body: JSON.stringify({ token, newPassword: password, password }),
+        });
+      }
       
       setSuccess(true);
-      setTimeout(() => router.push('/login'), 3000);
+      setTimeout(() => router.push('/login'), 2500);
     } catch (err: any) {
-      setErrorMsg(err.message);
+      setErrorMsg(err.message || 'Failed to update password');
     } finally {
       setLoading(false);
     }
@@ -72,7 +86,7 @@ export default function ResetPasswordPage() {
               <input 
                 type="password"
                 required
-                disabled={!token}
+                disabled={!token && !isForced}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="New Password"
@@ -81,7 +95,7 @@ export default function ResetPasswordPage() {
               <input 
                 type="password"
                 required
-                disabled={!token}
+                disabled={!token && !isForced}
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="Confirm Password"
@@ -89,7 +103,7 @@ export default function ResetPasswordPage() {
               />
               <button 
                 type="submit"
-                disabled={loading || !token}
+                disabled={loading || (!token && !isForced)}
                 className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-xl shadow-md transition active:scale-95 disabled:opacity-50"
               >
                 {loading ? 'Resetting...' : 'Update Password'}
