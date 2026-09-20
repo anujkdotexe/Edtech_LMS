@@ -37,8 +37,22 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       if (!isAuthenticated && !isPublicRoute) {
         router.push('/login');
       } else if (isAuthenticated) {
-        if (pathname === '/login' || pathname.startsWith('/reset-password')) {
-          router.push('/');
+        if (pathname === '/login') {
+          if (user?.forcePasswordReset) {
+            router.push('/reset-password?forced=true');
+          } else if (user?.role === 'ADMIN') {
+            router.push('/admin');
+          } else if (user?.role === 'DEVELOPER') {
+            router.push('/dev');
+          } else {
+            router.push('/');
+          }
+        } else if (pathname.startsWith('/reset-password')) {
+          if (!user?.forcePasswordReset) {
+            router.push('/');
+          }
+        } else if (user?.forcePasswordReset) {
+          router.push('/reset-password?forced=true');
         } else {
           const role = user?.role || 'STUDENT';
           const isDev = role === 'DEVELOPER' || !!user?.impersonatedBy;

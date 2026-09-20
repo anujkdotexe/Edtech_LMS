@@ -419,12 +419,26 @@ export const purchaseCourseSchema: FastifySchema = {
       id: { type: 'string', example: 'course-uuid' }
     }
   },
+  body: {
+    type: 'object',
+    properties: {
+      simulatedStatus: { type: 'string', enum: ['SUCCESS', 'FAILED'], example: 'SUCCESS' }
+    }
+  },
   response: {
     200: {
       type: 'object',
       properties: {
         success: { type: 'boolean', example: true },
         message: { type: 'string', example: 'Course unlocked successfully' },
+        transactionId: { type: 'string', example: 'TXN-98425102' }
+      }
+    },
+    400: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: false },
+        message: { type: 'string', example: 'Simulated payment failed' },
         transactionId: { type: 'string', example: 'TXN-98425102' }
       }
     }

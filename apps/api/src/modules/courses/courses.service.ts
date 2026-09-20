@@ -291,6 +291,7 @@ export class CoursesService {
       success: orderStatus === 'SUCCESS',
       orderId: newOrder.id,
       status: orderStatus,
+      transactionId,
       message:
         orderStatus === 'SUCCESS' ? 'Course successfully unlocked' : 'Simulated payment failed',
     };

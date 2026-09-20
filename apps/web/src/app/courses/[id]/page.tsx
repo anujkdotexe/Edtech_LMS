@@ -362,9 +362,11 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
                 <h3 className="font-display font-extrabold text-slate-800 text-lg leading-tight">
                   {activeLesson.title}
                 </h3>
-                <p className="text-xs text-slate-600 leading-normal">
-                  {activeLesson.summary || 'Summary placeholder text detailing vocabulary review.'}
-                </p>
+                {activeLesson.summary && (
+                  <p className="text-xs text-slate-600 leading-normal">
+                    {activeLesson.summary}
+                  </p>
+                )}
               </div>
 
               {/* Lesson Content Viewer */}
