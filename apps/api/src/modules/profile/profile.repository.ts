@@ -117,7 +117,7 @@ export class ProfileRepository {
     userId: string,
     data: { name?: string; avatarUrl?: string; passwordHash?: string; forcePasswordReset?: boolean }
   ) {
-    const updates: any = { updatedAt: new Date() };
+    const updates: Partial<typeof schema.users.$inferInsert> = { updatedAt: new Date() };
     if (data.name !== undefined) updates.name = data.name;
     if (data.avatarUrl !== undefined) updates.avatarUrl = data.avatarUrl;
     if (data.passwordHash !== undefined) updates.passwordHash = data.passwordHash;

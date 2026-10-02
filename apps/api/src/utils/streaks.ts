@@ -1,5 +1,8 @@
 import { eq } from 'drizzle-orm';
+import { db } from '../db';
 import * as schema from '../db/schema';
+
+type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export interface StreakResult {
   currentStreak: number;
@@ -17,7 +20,7 @@ export function getCalendarDayDiff(dateStr1: string, dateStr2: string): number {
 }
 
 export async function updateStreakInTx(
-  tx: any,
+  tx: DbTransaction,
   userId: string,
   todayStr: string = new Date().toISOString().split('T')[0]
 ): Promise<StreakResult> {

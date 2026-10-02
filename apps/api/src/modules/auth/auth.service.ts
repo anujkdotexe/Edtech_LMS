@@ -1,12 +1,14 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { UserRole } from '@lms/types';
 import { AuthRepository } from './auth.repository';
 import { serverEnv } from '../../config';
 import { UnauthorizedError, ForbiddenError, ValidationError } from '../../errors';
 import { UserAuthProfile } from './auth.types';
+import { emailService } from '../../common/email';
 
 export class AuthService {
-  static generateTokens(user: { id: string; role: 'STUDENT' | 'ADMIN' | 'DEVELOPER' }) {
+  static generateTokens(user: { id: string; role: UserRole }) {
     const token = jwt.sign(
       { userId: user.id, role: user.role },
       serverEnv.JWT_SECRET,
@@ -119,7 +121,13 @@ export class AuthService {
         serverEnv.JWT_RESET_SECRET,
         { expiresIn: '15m' }
       );
-      console.log(`\n\n=== [INFO] MOCK EMAIL SERVICE ===\nTo: ${email}\nSubject: Password Reset\nLink: ${serverEnv.FRONTEND_URL}/reset-password?token=${resetToken}\n=================================\n`);
+      const resetLink = `${serverEnv.FRONTEND_URL}/reset-password?token=${resetToken}`;
+      await emailService.sendEmail({
+        to: email,
+        subject: 'Reset your password - Antigravity LMS',
+        text: `Please use the following link to reset your password: ${resetLink}\nThis link expires in 15 minutes.`,
+        html: `<p>Please use the following link to reset your password:</p><p><a href="${resetLink}">${resetLink}</a></p><p>This link expires in 15 minutes.</p>`,
+      });
     }
     return { success: true, message: 'If an account exists, a reset link was sent.' };
   }

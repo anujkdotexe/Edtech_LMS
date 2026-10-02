@@ -1,5 +1,8 @@
 import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
+import { db } from '../db';
+
+export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export interface SystemBadge {
   id: string;
@@ -31,7 +34,7 @@ export interface AwardedBadge {
 }
 
 export async function checkAndAwardBadges(
-  tx: any,
+  tx: DbTransaction,
   userId: string,
   context: BadgeEvaluationContext
 ): Promise<AwardedBadge[]> {

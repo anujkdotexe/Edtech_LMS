@@ -267,6 +267,7 @@ export class CoursesService {
       title: string;
       description: string;
       locale: string;
+      isPublished?: boolean;
     },
     user: { userId: string; impersonatedBy?: string },
     ip?: string
@@ -275,10 +276,11 @@ export class CoursesService {
       cefrLevel: data.cefrLevel || 'A1',
       price: String(data.price || 0.0),
       isPremium: !!data.isPremium,
-      isPublished: true,
+      isPublished: data.isPublished ?? false,
       locale: data.locale,
       title: data.title,
       description: data.description,
+      creatorId: user.userId,
     });
 
     await db.insert(schema.auditLogs).values({

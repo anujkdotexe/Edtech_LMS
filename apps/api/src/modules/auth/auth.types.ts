@@ -1,8 +1,10 @@
+import { UserRole } from '@lms/types';
+
 export interface UserAuthProfile {
   id: string;
   name: string;
   email: string;
-  role: 'STUDENT' | 'ADMIN' | 'DEVELOPER';
+  role: UserRole;
   avatarUrl: string | null;
   forcePasswordReset: boolean;
   isSuspended?: boolean;
@@ -11,5 +13,6 @@ export interface UserAuthProfile {
 
 export interface TokenPayload {
   userId: string;
-  role: 'STUDENT' | 'ADMIN' | 'DEVELOPER';
+  role: UserRole;
 }
+
