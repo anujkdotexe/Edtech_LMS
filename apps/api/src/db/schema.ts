@@ -16,7 +16,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 // --- ENUMS DEFINITIONS ---
-export const userRoleEnum = pgEnum('user_role', ['STUDENT', 'ADMIN', 'DEVELOPER']);
+export const userRoleEnum = pgEnum('user_role', ['STUDENT', 'INSTRUCTOR', 'ADMIN', 'DEVELOPER']);
 export const cefrLevelEnum = pgEnum('cefr_level', ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
 export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'SUCCESS', 'FAILED', 'REFUNDED']);
 export const difficultyLevelEnum = pgEnum('difficulty_level', ['EASY', 'MEDIUM', 'HARD']);
@@ -78,6 +78,7 @@ export const userBadges = pgTable('user_badges', {
 // 5. courses
 export const courses = pgTable('courses', {
   id: uuid('id').primaryKey().defaultRandom(),
+  creatorId: uuid('creator_id').references(() => users.id, { onDelete: 'set null' }),
   cefrLevel: cefrLevelEnum('cefr_level').default('A1').notNull(),
   price: numeric('price', { precision: 10, scale: 2 }).default('0.00').notNull(),
   isPremium: boolean('is_premium').default(false).notNull(),
@@ -155,6 +156,7 @@ export const lessonTranslations = pgTable('lesson_translations', {
 // 11. quizzes
 export const quizzes = pgTable('quizzes', {
   id: uuid('id').primaryKey().defaultRandom(),
+  creatorId: uuid('creator_id').references(() => users.id, { onDelete: 'set null' }),
   difficulty: difficultyLevelEnum('difficulty').default('EASY').notNull(),
   pointValue: integer('point_value').default(50).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
