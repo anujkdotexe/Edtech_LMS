@@ -1,6 +1,7 @@
 import { eq, and, sql, desc, count, sum, avg, inArray } from 'drizzle-orm';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
+import { UpdateQuestionDto } from './admin.types';
 
 export class AdminRepository {
   // ─── Students ─────────────────────────────────────────────────────────────
@@ -12,6 +13,15 @@ export class AdminRepository {
   static async findUserByEmail(email: string) {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.email, email)).limit(1);
     return user || null;
+  }
+
+  static async findExistingEmails(emails: string[]): Promise<string[]> {
+    if (emails.length === 0) return [];
+    const existing = await db
+      .select({ email: schema.users.email })
+      .from(schema.users)
+      .where(inArray(schema.users.email, emails));
+    return existing.map((u) => u.email.toLowerCase());
   }
 
   static async getStudentsWithDetails() {
@@ -264,7 +274,13 @@ export class AdminRepository {
       })
       .from(schema.orders)
       .innerJoin(schema.users, eq(schema.orders.userId, schema.users.id))
-      .innerJoin(schema.courseTranslations, eq(schema.orders.courseId, schema.courseTranslations.courseId))
+      .leftJoin(
+        schema.courseTranslations,
+        and(
+          eq(schema.orders.courseId, schema.courseTranslations.courseId),
+          eq(schema.courseTranslations.locale, 'en')
+        )
+      )
       .orderBy(desc(schema.orders.createdAt));
   }
 
@@ -650,7 +666,7 @@ export class AdminRepository {
     return newQuestion;
   }
 
-  static async updateQuestion(id: string, updates: any) {
+  static async updateQuestion(id: string, updates: UpdateQuestionDto) {
     await db.update(schema.quizQuestions).set(updates).where(eq(schema.quizQuestions.id, id));
   }
 

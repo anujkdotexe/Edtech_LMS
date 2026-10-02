@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AdminService } from './admin.service';
+import { handleControllerError, sendSuccess } from '../../utils/response';
 import {
   StudentFilters,
   CreateStudentDto,
@@ -21,10 +22,9 @@ export class AdminController {
   static async getStudents(request: FastifyRequest<{ Querystring: StudentFilters }>, reply: FastifyReply) {
     try {
       const students = await AdminService.listStudents(request.query || {});
-      reply.status(200).send(students);
+      return sendSuccess(reply, students);
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not fetch students');
     }
   }
 
@@ -32,18 +32,14 @@ export class AdminController {
     try {
       const adminUserId = request.user!.userId;
       const result = await AdminService.addStudent(request.body, adminUserId);
-      reply.status(201).send({
+      return reply.status(201).send({
         success: true,
         student: result.student,
         tempPassword: result.tempPassword,
         message: 'Student created successfully',
       });
-    } catch (error: any) {
-      if (error.message === 'EMAIL_EXISTS') {
-        return reply.status(409).send({ error: 'Conflict', message: 'A student with this email already exists' });
-      }
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+    } catch (error) {
+      return handleControllerError(reply, error, 'Could not create student');
     }
   }
 
@@ -51,13 +47,9 @@ export class AdminController {
     try {
       const adminUserId = request.user!.userId;
       const { count } = await AdminService.bulkEnroll(request.body, adminUserId);
-      reply.status(200).send({ success: true, enrolledCount: count, message: `Successfully enrolled ${count} students` });
-    } catch (error: any) {
-      if (error.message === 'COURSE_NOT_FOUND') {
-        return reply.status(404).send({ error: 'Not Found', message: 'Course not found' });
-      }
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return sendSuccess(reply, { success: true, enrolledCount: count, message: `Successfully enrolled ${count} students` });
+    } catch (error) {
+      return handleControllerError(reply, error, 'Bulk enrollment failed');
     }
   }
 
@@ -68,10 +60,9 @@ export class AdminController {
       if (count === 0) {
         return reply.status(404).send({ error: 'Not Found', message: 'Active enrollment not found for this student and course' });
       }
-      reply.status(200).send({ success: true, message: 'Course access revoked successfully' });
+      return sendSuccess(reply, { success: true, message: 'Course access revoked successfully' });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not revoke course access');
     }
   }
 
@@ -79,27 +70,22 @@ export class AdminController {
     try {
       const adminUserId = request.user!.userId;
       await AdminService.sendMessage(request.body, adminUserId);
-      reply.status(200).send({ success: true, message: 'Message logged and queued for delivery' });
-    } catch (error: any) {
-      if (error.message === 'STUDENT_NOT_FOUND') {
-        return reply.status(404).send({ error: 'Not Found', message: 'Student account not found' });
-      }
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return sendSuccess(reply, { success: true, message: 'Message logged and queued for delivery' });
+    } catch (error) {
+      return handleControllerError(reply, error, 'Could not send message');
     }
   }
 
-  static async exportStudents(request: FastifyRequest, reply: FastifyReply) {
+  static async exportStudents(_request: FastifyRequest, reply: FastifyReply) {
     try {
       const csv = await AdminService.exportStudentsCsv();
-      reply
+      return reply
         .header('Content-Type', 'text/csv')
         .header('Content-Disposition', 'attachment; filename=students_export.csv')
         .status(200)
         .send(csv);
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not export students');
     }
   }
 
@@ -107,17 +93,13 @@ export class AdminController {
     try {
       const adminUserId = request.user!.userId;
       const { isSuspended } = await AdminService.suspendStudent(request.params.id, adminUserId);
-      reply.status(200).send({
+      return sendSuccess(reply, {
         success: true,
         message: isSuspended ? 'Student suspended successfully' : 'Student activated successfully',
         isSuspended,
       });
-    } catch (error: any) {
-      if (error.message === 'STUDENT_NOT_FOUND') {
-        return reply.status(404).send({ error: 'Not Found', message: 'Student account not found' });
-      }
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+    } catch (error) {
+      return handleControllerError(reply, error, 'Could not update student status');
     }
   }
 
@@ -125,17 +107,13 @@ export class AdminController {
     try {
       const adminUserId = request.user!.userId;
       const { tempPassword } = await AdminService.resetStudentPassword(request.params.id, adminUserId);
-      reply.status(200).send({
+      return sendSuccess(reply, {
         success: true,
         tempPassword,
         message: `Password reset successfully. Temporary password: ${tempPassword}`,
       });
-    } catch (error: any) {
-      if (error.message === 'STUDENT_NOT_FOUND') {
-        return reply.status(404).send({ error: 'Not Found', message: 'Student account not found' });
-      }
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+    } catch (error) {
+      return handleControllerError(reply, error, 'Could not reset student password');
     }
   }
 
@@ -143,13 +121,9 @@ export class AdminController {
     try {
       const adminUserId = request.user!.userId;
       await AdminService.deleteStudent(request.params.id, adminUserId);
-      reply.status(200).send({ success: true, message: 'Student account and progress deleted permanently' });
-    } catch (error: any) {
-      if (error.message === 'STUDENT_NOT_FOUND') {
-        return reply.status(404).send({ error: 'Not Found', message: 'Student account not found' });
-      }
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return sendSuccess(reply, { success: true, message: 'Student account and progress deleted permanently' });
+    } catch (error) {
+      return handleControllerError(reply, error, 'Could not delete student');
     }
   }
 
@@ -163,20 +137,16 @@ export class AdminController {
       if (result.alreadyEnrolled) {
         return reply.status(400).send({ error: 'Bad Request', message: 'Student is already enrolled in this course' });
       }
-      reply.status(200).send({ success: true, message: 'Student enrolled successfully' });
-    } catch (error: any) {
-      if (error.message === 'COURSE_NOT_FOUND') {
-        return reply.status(404).send({ error: 'Not Found', message: 'Course not found' });
-      }
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return sendSuccess(reply, { success: true, message: 'Student enrolled successfully' });
+    } catch (error) {
+      return handleControllerError(reply, error, 'Could not enroll student');
     }
   }
 
   static async importStudents(request: FastifyRequest, reply: FastifyReply) {
     try {
       let studentsList: Array<{ name: string; email: string }> = [];
-      if (request.body && typeof request.body === 'object' && Array.isArray((request.body as any).students)) {
+      if (request.body && typeof request.body === 'object' && Array.isArray((request.body as { students?: unknown }).students)) {
         studentsList = (request.body as { students: Array<{ name: string; email: string }> }).students;
       }
 
@@ -195,25 +165,23 @@ export class AdminController {
         request.ip
       );
 
-      reply.status(200).send({
+      return sendSuccess(reply, {
         success: true,
         importedCount,
         message: 'Credentials printed to standard system logs. Force-reset scheduled.',
       });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error', message: 'Bulk student onboarding failed' });
+      return handleControllerError(reply, error, 'Bulk student onboarding failed');
     }
   }
 
   // ─── Payments ─────────────────────────────────────────────────────────────
-  static async getPayments(request: FastifyRequest, reply: FastifyReply) {
+  static async getPayments(_request: FastifyRequest, reply: FastifyReply) {
     try {
       const payments = await AdminService.getPayments();
-      reply.status(200).send(payments);
+      return sendSuccess(reply, payments);
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not fetch payments');
     }
   }
 
@@ -221,79 +189,75 @@ export class AdminController {
     try {
       const adminUserId = request.user!.userId;
       await AdminService.issueRefund(request.params.id, adminUserId);
-      reply.status(200).send({ success: true, message: 'Refund issued successfully' });
-    } catch (error: any) {
-      if (error.message === 'ORDER_NOT_FOUND') {
-        return reply.status(404).send({ error: 'Not Found', message: 'Order not found' });
-      }
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return sendSuccess(reply, { success: true, message: 'Refund issued successfully' });
+    } catch (error) {
+      return handleControllerError(reply, error, 'Could not issue refund');
     }
   }
 
-  static async exportPayments(request: FastifyRequest, reply: FastifyReply) {
+  static async exportPayments(_request: FastifyRequest, reply: FastifyReply) {
     try {
       const csv = await AdminService.exportPaymentsCsv();
-      reply
+      return reply
         .header('Content-Type', 'text/csv')
         .header('Content-Disposition', 'attachment; filename=revenue_export.csv')
         .status(200)
         .send(csv);
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not export payments');
     }
   }
 
   // ─── Settings ─────────────────────────────────────────────────────────────
-  static async getSiteSettings(request: FastifyRequest, reply: FastifyReply) {
+  static async getSiteSettings(_request: FastifyRequest, reply: FastifyReply) {
     try {
       const settings = await AdminService.getSettings();
-      reply.status(200).send(settings);
+      return sendSuccess(reply, settings);
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not fetch site settings');
     }
   }
 
-  static async getPublicSettings(request: FastifyRequest, reply: FastifyReply) {
+  static async getPublicSettings(_request: FastifyRequest, reply: FastifyReply) {
     try {
       const settings = await AdminService.getSettings();
-      reply.status(200).send(settings);
+      // Only expose non-sensitive public fields — never email templates to unauthenticated callers
+      return sendSuccess(reply, {
+        activeBanner: settings.activeBanner,
+        bannerEnabled: settings.bannerEnabled,
+        maintenanceMode: settings.maintenanceMode,
+        dailyTip: settings.dailyTip,
+      });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not fetch public settings');
     }
   }
 
   static async updateSiteSettings(request: FastifyRequest<{ Body: UpdateSiteSettingsDto }>, reply: FastifyReply) {
     try {
       const settings = await AdminService.updateSettings(request.body);
-      reply.status(200).send(settings);
+      return sendSuccess(reply, settings);
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not update site settings');
     }
   }
 
   // ─── Analytics ────────────────────────────────────────────────────────────
-  static async getDashboardAnalytics(request: FastifyRequest, reply: FastifyReply) {
+  static async getDashboardAnalytics(_request: FastifyRequest, reply: FastifyReply) {
     try {
       const analytics = await AdminService.getDashboardAnalytics();
-      reply.status(200).send(analytics);
+      return sendSuccess(reply, analytics);
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not fetch dashboard analytics');
     }
   }
 
   static async getCourseAnalytics(request: FastifyRequest<{ Params: { courseId: string } }>, reply: FastifyReply) {
     try {
       const analytics = await AdminService.getCourseAnalytics(request.params.courseId);
-      reply.status(200).send(analytics);
+      return sendSuccess(reply, analytics);
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not fetch course analytics');
     }
   }
 
@@ -303,30 +267,27 @@ export class AdminController {
       const courseId = request.params.id;
       const { title, orderIndex, locale = 'en' } = request.body;
       const newMod = await AdminService.createModule({ courseId, title, orderIndex, locale });
-      reply.status(201).send({ success: true, moduleId: newMod.id });
+      return reply.status(201).send({ success: true, moduleId: newMod.id });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not create module');
     }
   }
 
   static async updateModule(request: FastifyRequest<{ Params: { id: string }; Body: UpdateModuleDto }>, reply: FastifyReply) {
     try {
       await AdminService.updateModule(request.params.id, request.body);
-      reply.status(200).send({ success: true });
+      return sendSuccess(reply, { success: true });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not update module');
     }
   }
 
   static async deleteModule(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     try {
       await AdminService.deleteModule(request.params.id);
-      reply.status(200).send({ success: true });
+      return sendSuccess(reply, { success: true });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not delete module');
     }
   }
 
@@ -334,30 +295,27 @@ export class AdminController {
     try {
       const moduleId = request.params.id;
       const newLesson = await AdminService.createLesson({ moduleId, ...request.body });
-      reply.status(201).send({ success: true, lessonId: newLesson.id });
+      return reply.status(201).send({ success: true, lessonId: newLesson.id });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not create lesson');
     }
   }
 
   static async updateLesson(request: FastifyRequest<{ Params: { id: string }; Body: UpdateLessonDto }>, reply: FastifyReply) {
     try {
       await AdminService.updateLesson(request.params.id, request.body);
-      reply.status(200).send({ success: true });
+      return sendSuccess(reply, { success: true });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not update lesson');
     }
   }
 
   static async deleteLesson(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     try {
       await AdminService.deleteLesson(request.params.id);
-      reply.status(200).send({ success: true });
+      return sendSuccess(reply, { success: true });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not delete lesson');
     }
   }
 
@@ -368,13 +326,9 @@ export class AdminController {
         return reply.status(400).send({ error: 'Bad Request', message: 'No file uploaded' });
       }
       const { filePath } = await AdminService.uploadLessonFile(request.params.id, data);
-      reply.status(200).send({ success: true, filePath });
-    } catch (error: any) {
-      if (error.message === 'LESSON_NOT_FOUND') {
-        return reply.status(404).send({ error: 'Not Found', message: 'Lesson not found' });
-      }
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error', message: 'File upload failed' });
+      return sendSuccess(reply, { success: true, filePath });
+    } catch (error) {
+      return handleControllerError(reply, error, 'File upload failed');
     }
   }
 
@@ -384,13 +338,9 @@ export class AdminController {
   ) {
     try {
       const { count } = await AdminService.reorderLessons(request.params.id, request.body.orderedLessonIds);
-      reply.status(200).send({ success: true, message: `Reordered ${count} lessons successfully` });
-    } catch (error: any) {
-      if (error.message === 'MODULE_NOT_FOUND') {
-        return reply.status(404).send({ error: 'Not Found', message: 'Module not found' });
-      }
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return sendSuccess(reply, { success: true, message: `Reordered ${count} lessons successfully` });
+    } catch (error) {
+      return handleControllerError(reply, error, 'Could not reorder lessons');
     }
   }
 
@@ -399,43 +349,36 @@ export class AdminController {
     try {
       const locale = (request.headers['accept-language'] || 'en').split(',')[0].trim().substring(0, 2);
       const quiz = await AdminService.getQuizDetails(request.params.id, locale);
-      reply.status(200).send(quiz);
-    } catch (error: any) {
-      if (error?.name === 'NotFoundError' || error?.statusCode === 404) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: error.message || 'Quiz not found' });
-      }
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return sendSuccess(reply, quiz);
+    } catch (error) {
+      return handleControllerError(reply, error, 'Could not fetch quiz');
     }
   }
 
   static async createQuiz(request: FastifyRequest<{ Body: CreateQuizDto }>, reply: FastifyReply) {
     try {
       const newQuiz = await AdminService.createQuiz(request.body);
-      reply.status(201).send({ success: true, quizId: newQuiz.id });
+      return reply.status(201).send({ success: true, quizId: newQuiz.id });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not create quiz');
     }
   }
 
   static async updateQuiz(request: FastifyRequest<{ Params: { id: string }; Body: UpdateQuizDto }>, reply: FastifyReply) {
     try {
       await AdminService.updateQuiz(request.params.id, request.body);
-      reply.status(200).send({ success: true });
+      return sendSuccess(reply, { success: true });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not update quiz');
     }
   }
 
   static async deleteQuiz(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     try {
       await AdminService.deleteQuiz(request.params.id);
-      reply.status(200).send({ success: true });
+      return sendSuccess(reply, { success: true });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not delete quiz');
     }
   }
 
@@ -443,30 +386,27 @@ export class AdminController {
     try {
       const quizId = request.params.id;
       const newQuestion = await AdminService.createQuestion({ quizId, ...request.body });
-      reply.status(201).send({ success: true, questionId: newQuestion.id });
+      return reply.status(201).send({ success: true, questionId: newQuestion.id });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not create question');
     }
   }
 
   static async updateQuestion(request: FastifyRequest<{ Params: { id: string }; Body: UpdateQuestionDto }>, reply: FastifyReply) {
     try {
       await AdminService.updateQuestion(request.params.id, request.body);
-      reply.status(200).send({ success: true });
+      return sendSuccess(reply, { success: true });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not update question');
     }
   }
 
   static async deleteQuestion(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     try {
       await AdminService.deleteQuestion(request.params.id);
-      reply.status(200).send({ success: true });
+      return sendSuccess(reply, { success: true });
     } catch (error) {
-      request.log.error(error);
-      reply.status(500).send({ error: 'Internal Server Error' });
+      return handleControllerError(reply, error, 'Could not delete question');
     }
   }
 }
