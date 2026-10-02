@@ -1,10 +1,11 @@
-import fastify from 'fastify';
+import fastify, { FastifyReply } from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import path from 'path';
 import fs from 'fs';
 import { serverEnv } from './config';
+import { AppError } from './errors';
 import { verifyJWT } from './modules/auth/auth.middleware';
 import { AdminController } from './modules/admin/admin.controller';
 import { authRoutes } from './modules/auth/auth.routes';
@@ -36,6 +37,48 @@ const server = fastify({
 server.addHook('onSend', async (_request, reply) => {
   reply.header('Connection', 'keep-alive');
   reply.header('Keep-Alive', 'timeout=65');
+});
+
+// Global Centralized Error Handler
+server.setErrorHandler((error, request, reply) => {
+  if (error instanceof AppError) {
+    return reply.status(error.statusCode).send({
+      statusCode: error.statusCode,
+      error: error.name || 'AppError',
+      message: error.message,
+    });
+  }
+
+  // Fastify Schema Validation Error
+  if (error.validation) {
+    return reply.status(400).send({
+      statusCode: 400,
+      error: 'Bad Request',
+      message: error.message,
+      validation: error.validation,
+    });
+  }
+
+  // Postgres unique constraint violation
+  if ((error as any).code === '23505') {
+    return reply.status(409).send({
+      statusCode: 409,
+      error: 'Conflict',
+      message: 'A record with this identifier already exists',
+    });
+  }
+
+  request.log.error(error);
+
+  const statusCode = typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode < 600
+    ? error.statusCode
+    : 500;
+
+  return reply.status(statusCode).send({
+    statusCode,
+    error: error.name || 'Internal Server Error',
+    message: statusCode === 500 ? 'Internal Server Error' : error.message,
+  });
 });
 
 // Ensure upload directory exists for local PDF syllabus courseware storage
@@ -143,23 +186,17 @@ server.register(swaggerUI, {
   },
 });
 
-server.get('/docs', async (request, reply) => {
+const docsHandler = async (_request: unknown, reply: FastifyReply) => {
   let htmlPath = path.join(__dirname, 'templates', 'docs.html');
   if (!fs.existsSync(htmlPath)) {
     htmlPath = path.join(__dirname, '..', 'src', 'templates', 'docs.html');
   }
   const htmlContent = fs.readFileSync(htmlPath, 'utf8');
   reply.type('text/html').send(htmlContent);
-});
+};
 
-server.get('/docs/', async (request, reply) => {
-  let htmlPath = path.join(__dirname, 'templates', 'docs.html');
-  if (!fs.existsSync(htmlPath)) {
-    htmlPath = path.join(__dirname, '..', 'src', 'templates', 'docs.html');
-  }
-  const htmlContent = fs.readFileSync(htmlPath, 'utf8');
-  reply.type('text/html').send(htmlContent);
-});
+server.get('/docs', docsHandler);
+server.get('/docs/', docsHandler);
 
 server.get('/test-swagger', async () => {
   return {
