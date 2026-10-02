@@ -4,13 +4,33 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { apiFetch } from '../../../lib/api';
-import { Settings, ArrowLeft, Save, Bell, AlertTriangle, ShieldCheck } from 'lucide-react';
+import {
+  Settings,
+  ArrowLeft,
+  Save,
+  Bell,
+  AlertTriangle,
+  ShieldCheck,
+  Mail,
+  Lightbulb,
+  Info,
+} from 'lucide-react';
+
+interface EmailTemplateConfig {
+  subject: string;
+  body: string;
+}
 
 interface SiteSettings {
   activeBanner: string;
   bannerEnabled: boolean;
   maintenanceMode: boolean;
   dailyTip: string;
+  emailTemplates?: {
+    welcome: EmailTemplateConfig;
+    passwordReset: EmailTemplateConfig;
+    courseEnrolled: EmailTemplateConfig;
+  };
 }
 
 export default function AdminSettingsPage() {
@@ -19,8 +39,14 @@ export default function AdminSettingsPage() {
     activeBanner: '',
     bannerEnabled: false,
     maintenanceMode: false,
-    dailyTip: ''
+    dailyTip: '',
+    emailTemplates: {
+      welcome: { subject: '', body: '' },
+      passwordReset: { subject: '', body: '' },
+      courseEnrolled: { subject: '', body: '' },
+    },
   });
+  const [activeEmailTab, setActiveEmailTab] = useState<'welcome' | 'passwordReset' | 'courseEnrolled'>('welcome');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -35,7 +61,14 @@ export default function AdminSettingsPage() {
     setLoading(true);
     try {
       const data = await apiFetch<SiteSettings>('/api/admin/settings');
-      setSettings(data);
+      setSettings({
+        ...data,
+        emailTemplates: data.emailTemplates || {
+          welcome: { subject: '', body: '' },
+          passwordReset: { subject: '', body: '' },
+          courseEnrolled: { subject: '', body: '' },
+        },
+      });
     } catch (err) {
       console.error(err);
     } finally {
@@ -52,7 +85,7 @@ export default function AdminSettingsPage() {
         method: 'PUT',
         body: JSON.stringify(settings),
       });
-      setSuccessMsg('Settings saved successfully!');
+      setSuccessMsg('All site settings and email templates updated successfully!');
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err: any) {
       alert(err.message || 'Error saving settings');
@@ -61,9 +94,28 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const updateEmailTemplate = (
+    key: 'welcome' | 'passwordReset' | 'courseEnrolled',
+    field: 'subject' | 'body',
+    value: string
+  ) => {
+    setSettings((prev) => ({
+      ...prev,
+      emailTemplates: {
+        ...prev.emailTemplates,
+        [key]: {
+          ...prev.emailTemplates?.[key],
+          [field]: value,
+        },
+      } as any,
+    }));
+  };
+
   if (!isAuthenticated || !['ADMIN', 'DEVELOPER'].includes(user?.role || '')) {
     return <div className="p-8 text-center text-red-500 font-bold">Unauthorized</div>;
   }
+
+  const currentTemplate = settings.emailTemplates?.[activeEmailTab] || { subject: '', body: '' };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 p-4 animate-[fadeIn_0.4s_ease-out]">
@@ -77,7 +129,7 @@ export default function AdminSettingsPage() {
             <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
               <Settings className="w-6 h-6 text-primary" /> Global Site Settings
             </h1>
-            <p className="text-sm text-slate-500">Configure banners, maintenance mode, and app metadata</p>
+            <p className="text-sm text-slate-500">Configure banners, email templates, daily tips, and app controls</p>
           </div>
         </div>
       </div>
@@ -94,7 +146,8 @@ export default function AdminSettingsPage() {
               </div>
             )}
 
-            <div className="space-y-6">
+            {/* Announcements & Banners */}
+            <div className="space-y-4">
               <h3 className="font-display font-extrabold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2">
                 <Bell className="w-5 h-5 text-indigo-500" /> Announcements & Banners
               </h3>
@@ -120,13 +173,115 @@ export default function AdminSettingsPage() {
                     value={settings.activeBanner}
                     onChange={(e) => setSettings({ ...settings, activeBanner: e.target.value })}
                     className="w-full p-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
-                    placeholder="E.g., System maintenance scheduled for..."
+                    placeholder="E.g., Welcome to our platform! New language courses are available."
                   />
                 </div>
               )}
             </div>
 
-            <div className="space-y-6">
+            {/* Daily Tips */}
+            <div className="space-y-4">
+              <h3 className="font-display font-extrabold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2 mt-8">
+                <Lightbulb className="w-5 h-5 text-amber-500" /> Daily Rotating Tip
+              </h3>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase">Tip of the Day</label>
+                <input
+                  type="text"
+                  value={settings.dailyTip}
+                  onChange={(e) => setSettings({ ...settings, dailyTip: e.target.value })}
+                  className="w-full p-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
+                  placeholder="Practice for 15 minutes a day to maintain your streak!"
+                />
+              </div>
+            </div>
+
+            {/* Email Templates Portal (Feature #94) */}
+            <div className="space-y-4">
+              <h3 className="font-display font-extrabold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2 mt-8">
+                <Mail className="w-5 h-5 text-sky-500" /> Email Templates Portal
+              </h3>
+
+              {/* Template Tabs */}
+              <div className="flex gap-2 border-b border-slate-200 pb-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveEmailTab('welcome')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
+                    activeEmailTab === 'welcome'
+                      ? 'bg-sky-100 text-sky-700 shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  Welcome Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveEmailTab('passwordReset')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
+                    activeEmailTab === 'passwordReset'
+                      ? 'bg-sky-100 text-sky-700 shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  Password Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveEmailTab('courseEnrolled')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
+                    activeEmailTab === 'courseEnrolled'
+                      ? 'bg-sky-100 text-sky-700 shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  Course Enrolled
+                </button>
+              </div>
+
+              {/* Template Editor */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-slate-500 flex items-center gap-1.5">
+                    <Info className="w-4 h-4 text-sky-500" />
+                    {activeEmailTab === 'passwordReset' && (
+                      <span>Available dynamic variable: <code className="bg-sky-100 text-sky-800 px-1 rounded">{'{{resetLink}}'}</code></span>
+                    )}
+                    {activeEmailTab === 'courseEnrolled' && (
+                      <span>Available dynamic variable: <code className="bg-sky-100 text-sky-800 px-1 rounded">{'{{courseTitle}}'}</code></span>
+                    )}
+                    {activeEmailTab === 'welcome' && (
+                      <span>Welcome message dispatched on onboarding.</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-600 uppercase">Subject Line</label>
+                  <input
+                    type="text"
+                    value={currentTemplate.subject}
+                    onChange={(e) => updateEmailTemplate(activeEmailTab, 'subject', e.target.value)}
+                    className="w-full p-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
+                    placeholder="Subject line..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-600 uppercase">Email Content Body</label>
+                  <textarea
+                    rows={4}
+                    value={currentTemplate.body}
+                    onChange={(e) => updateEmailTemplate(activeEmailTab, 'body', e.target.value)}
+                    className="w-full p-2.5 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 transition font-mono text-xs leading-relaxed"
+                    placeholder="Enter email body text..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Maintenance & Danger Zone */}
+            <div className="space-y-4">
               <h3 className="font-display font-extrabold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2 mt-8">
                 <AlertTriangle className="w-5 h-5 text-amber-500" /> Maintenance & Danger Zone
               </h3>
@@ -137,17 +292,18 @@ export default function AdminSettingsPage() {
                   <p className="text-xs text-red-600/80">Blocks all non-admin traffic to the LMS portal.</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={settings.maintenanceMode}
                     onChange={(e) => setSettings({ ...settings, maintenanceMode: e.target.checked })}
-                    className="sr-only peer" 
+                    className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
                 </label>
               </div>
             </div>
-            
+
+            {/* Submit Button */}
             <div className="pt-6 border-t border-slate-100 flex justify-end">
               <button
                 type="submit"
