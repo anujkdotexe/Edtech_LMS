@@ -1,4 +1,6 @@
-// API client wrapper for Fastify backend communication with automatic 401 token refresh
+// Resilient API client wrapper for Fastify backend communication
+// Features: automatic 401 token refresh concurrency, network timeout handling,
+// abort signal chaining, robust JSON parsing, and 204 No Content resilience.
 
 const getLocale = (): string => {
   if (typeof window !== 'undefined') {
@@ -9,88 +11,134 @@ const getLocale = (): string => {
 
 let refreshPromise: Promise<boolean> | null = null;
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers || {});
+export interface ApiFetchOptions extends RequestInit {
+  timeoutMs?: number;
+}
 
-  if (options.body && !(options.body instanceof FormData) && typeof options.body === 'string') {
+export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const { timeoutMs = 30000, signal: userSignal, ...fetchOptions } = options;
+
+  // Setup abort controller with timeout chained to caller's signal
+  const timeoutController = new AbortController();
+  const timer = setTimeout(() => {
+    timeoutController.abort(new Error(`Request timeout after ${timeoutMs}ms`));
+  }, timeoutMs);
+
+  let combinedSignal: AbortSignal;
+  if (userSignal) {
+    if (userSignal.aborted) {
+      clearTimeout(timer);
+      throw new Error('Request was aborted');
+    }
+    userSignal.addEventListener('abort', () => timeoutController.abort(userSignal.reason));
+  }
+  combinedSignal = timeoutController.signal;
+
+  const headers = new Headers(fetchOptions.headers || {});
+  if (fetchOptions.body && !(fetchOptions.body instanceof FormData) && typeof fetchOptions.body === 'string') {
     headers.set('Content-Type', 'application/json');
   }
-
   headers.set('Accept-Language', getLocale());
 
-  const response = await fetch(path, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
+  const executeRequest = async (targetPath: string, extraOptions: RequestInit = {}): Promise<Response> => {
+    return await fetch(targetPath, {
+      ...fetchOptions,
+      ...extraOptions,
+      headers: extraOptions.headers || headers,
+      credentials: 'include',
+      signal: combinedSignal,
+    });
+  };
 
-  const isAuthEndpoint =
-    path.includes('/api/auth/login') ||
-    path.includes('/api/auth/signup') ||
-    path.includes('/api/auth/refresh') ||
-    path.includes('/api/auth/me');
-
-  if (response.status === 401 && !isAuthEndpoint) {
-    if (!refreshPromise) {
-      refreshPromise = fetch('/api/auth/refresh', {
-        method: 'POST',
-        credentials: 'include',
-      })
-        .then((r) => r.ok)
-        .catch(() => false);
+  const parseResponseBody = async (res: Response): Promise<any> => {
+    if (res.status === 204 || res.status === 205) {
+      return {} as T;
     }
 
-    const refreshed = await refreshPromise;
-    refreshPromise = null;
+    const contentType = res.headers.get('content-type') || '';
+    const contentLength = res.headers.get('content-length');
 
-    if (refreshed) {
-      // Retry original request once
-      const retryResponse = await fetch(path, {
-        ...options,
-        headers,
-        credentials: 'include',
-      });
+    if (contentLength === '0') {
+      return {} as T;
+    }
 
-      if (!retryResponse.ok) {
-        let errMessage = 'An unexpected error occurred';
-        try {
-          const errData = await retryResponse.json();
-          errMessage = errData.message || errData.error || errMessage;
-        } catch {
-          // Keep fallback
-        }
-        throw new Error(errMessage);
-      }
-
-      if (retryResponse.status === 204) {
+    if (contentType.includes('application/json')) {
+      try {
+        const text = await res.text();
+        return text ? JSON.parse(text) : ({} as T);
+      } catch {
         return {} as T;
       }
-      return retryResponse.json();
-    } else {
-      // Global 401 interceptor: redirect to login if session has expired
-      if (typeof window !== 'undefined') {
-        const currentPath = window.location.pathname;
-        if (currentPath !== '/login' && !currentPath.startsWith('/reset-password')) {
-          window.location.href = '/login';
+    }
+
+    // Fallback for non-JSON text responses
+    try {
+      const text = await res.text();
+      return text;
+    } catch {
+      return {} as T;
+    }
+  };
+
+  try {
+    const response = await executeRequest(path);
+
+    const isAuthEndpoint =
+      path.includes('/api/auth/login') ||
+      path.includes('/api/auth/signup') ||
+      path.includes('/api/auth/refresh') ||
+      path.includes('/api/auth/me');
+
+    // Handle 401 Unauthorized with single shared refresh promise
+    if (response.status === 401 && !isAuthEndpoint) {
+      if (!refreshPromise) {
+        refreshPromise = fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+        })
+          .then((r) => r.ok)
+          .catch(() => false)
+          .finally(() => {
+            // Cleared only when promise settles, ensuring concurrent calls share the exact same refresh promise
+            refreshPromise = null;
+          });
+      }
+
+      const refreshed = await refreshPromise;
+
+      if (refreshed) {
+        // Retry the original request once with fresh access token
+        const retryResponse = await executeRequest(path);
+        if (!retryResponse.ok) {
+          const errData = await parseResponseBody(retryResponse);
+          const errMessage = (typeof errData === 'object' && (errData.message || errData.error)) || 'Request failed';
+          throw new Error(errMessage);
+        }
+        return await parseResponseBody(retryResponse);
+      } else {
+        // Global 401 interceptor: redirect to login if session expired
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname;
+          if (currentPath !== '/login' && !currentPath.startsWith('/reset-password')) {
+            window.location.href = '/login';
+          }
         }
       }
     }
-  }
 
-  if (!response.ok) {
-    let errorMessage = 'An unexpected error occurred';
-    try {
-      const errorData = await response.json();
-      errorMessage = errorData.message || errorData.error || errorMessage;
-    } catch {
-      // Keep fallback
+    if (!response.ok) {
+      const errorData = await parseResponseBody(response);
+      let errorMessage = 'An unexpected error occurred';
+      if (typeof errorData === 'object' && errorData !== null) {
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } else if (typeof errorData === 'string' && errorData.length > 0) {
+        errorMessage = errorData;
+      }
+      throw new Error(errorMessage);
     }
-    throw new Error(errorMessage);
-  }
 
-  if (response.status === 204) {
-    return {} as T;
+    return await parseResponseBody(response);
+  } finally {
+    clearTimeout(timer);
   }
-
-  return response.json();
 }

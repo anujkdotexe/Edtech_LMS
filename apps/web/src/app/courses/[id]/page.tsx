@@ -7,8 +7,9 @@ import { apiFetch } from '../../../lib/api';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { 
   ChevronLeft, Lock, Unlock, FileText, Play, CheckCircle2, 
-  HelpCircle, Eye, AlertCircle, ShoppingCart
+  HelpCircle, Eye, AlertCircle, ShoppingCart, CreditCard 
 } from 'lucide-react';
+import { RazorpaySimulatorModal } from '../../../components/courses/RazorpaySimulatorModal';
 
 interface Lesson {
   id: string;
@@ -58,9 +59,30 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
   const [xpAwarded, setXpAwarded] = useState(false);
 
   // Purchase Simulation State
+  const [isRazorpayOpen, setIsRazorpayOpen] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseStatus, setPurchaseStatus] = useState<'IDLE' | 'SUCCESS' | 'FAILED'>('IDLE');
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
+
+  const totalLessons = useMemo(() => {
+    const fromModules = (course?.modules || []).reduce((acc, m) => acc + (m.lessons?.length || 0), 0);
+    if (fromModules > 0) return fromModules;
+    return course?.totalLessonsCount ?? 0;
+  }, [course]);
+
+  const completedLessons = useMemo(() => {
+    const fromModules = (course?.modules || []).reduce(
+      (acc, m) => acc + (m.lessons?.filter((l) => l.isCompleted).length || 0),
+      0
+    );
+    if (fromModules > 0) return fromModules;
+    return course?.completedLessonsCount ?? 0;
+  }, [course]);
+
+  const progressPercent = useMemo(() => {
+    if (totalLessons === 0) return 0;
+    return Math.min(100, Math.round((completedLessons / totalLessons) * 100));
+  }, [completedLessons, totalLessons]);
 
   useEffect(() => {
     if (courseId && courseId !== 'undefined') {
@@ -231,13 +253,15 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
                 Syllabus Progress
               </span>
               <span className="text-emerald-700 font-extrabold">
-                {course.progressPercent ?? 0}% ({course.completedLessonsCount ?? 0}/{course.totalLessonsCount ?? 0} completed)
+                {totalLessons > 0
+                  ? `${progressPercent}% (${completedLessons}/${totalLessons} completed)`
+                  : '0% (No lessons published yet)'}
               </span>
             </div>
             <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
               <div
                 className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${course.progressPercent ?? 0}%` }}
+                style={{ width: `${progressPercent}%` }}
               />
             </div>
           </div>
@@ -246,29 +270,40 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
         {/* Purchase simulation widget embedded directly in course header */}
         {course.isPremium && !course.isUnlocked && (
           <div className="w-full md:w-auto bg-amber-50/50 border border-amber-100 rounded-xl p-4 flex flex-col items-center justify-center shrink-0 min-w-[200px]">
-            <span className="text-[10px] text-amber-800 font-bold uppercase tracking-wider mb-1">Sandbox License</span>
-            <span className="text-2xl font-black font-display text-slate-800 mb-3">${course.price}</span>
+            <span className="text-[10px] text-amber-800 font-bold uppercase tracking-wider mb-1">Lifetime Access</span>
+            <span className="text-2xl font-black font-display text-slate-800 mb-3">₹{Number(course.price).toFixed(2)}</span>
             
             {purchaseStatus === 'SUCCESS' ? (
               <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
                 <CheckCircle2 className="w-4 h-4 fill-emerald-50 text-emerald-600" />
-                Access Unlocking...
+                Access Unlocked!
               </span>
             ) : (
               <div className="flex flex-col w-full gap-2 text-center">
                 {purchaseError && <span className="text-[10px] text-red-500 font-semibold">{purchaseError}</span>}
                 <button
-                  onClick={() => handleSimulateCheckout('SUCCESS')}
-                  disabled={purchasing}
-                  className="w-full bg-accent hover:bg-amber-500 text-slate-900 text-xs font-extrabold py-2 rounded-lg transition"
+                  onClick={() => setIsRazorpayOpen(true)}
+                  className="w-full bg-[#0c2340] hover:bg-slate-800 text-white text-xs font-extrabold py-2.5 px-4 rounded-xl transition shadow-sm flex items-center justify-center gap-1.5"
                 >
-                  {purchasing ? 'Processing...' : 'Unlock via Sandbox'}
+                  <CreditCard className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Pay with Razorpay Sandbox</span>
                 </button>
               </div>
             )}
           </div>
         )}
       </section>
+
+      {/* Razorpay Sandbox Checkout Modal */}
+      <RazorpaySimulatorModal
+        isOpen={isRazorpayOpen}
+        onClose={() => setIsRazorpayOpen(false)}
+        onSuccess={async () => {
+          await fetchProfile();
+          if (courseId) await loadCourseSyllabus(courseId);
+        }}
+        course={course}
+      />
 
       {/* Main Split Layout: Syllabus Tree vs PDF Viewer */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -380,11 +415,21 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
 
                   const fpLower = cleanFp.toLowerCase();
                   const isVideo = fpLower.endsWith('.mp4') || fpLower.endsWith('.webm') || fpLower.endsWith('.ogg');
+                  const isAudio = fpLower.endsWith('.mp3') || fpLower.endsWith('.wav') || fpLower.endsWith('.aac') || fpLower.endsWith('.ogg');
                   const isPdf = fpLower.endsWith('.pdf');
+                  const isEmbed = cleanFp.startsWith('http://') || cleanFp.startsWith('https://');
 
                   return (
                     <div className="w-full bg-slate-50 border border-slate-200/80 rounded-xl overflow-hidden flex flex-col shadow-inset">
-                      {isVideo ? (
+                      {isEmbed ? (
+                        <iframe
+                          src={cleanFp}
+                          className="w-full h-[450px] border-0"
+                          title={activeLesson.title}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      ) : isVideo ? (
                         <video
                           controls
                           className="w-full max-h-[420px] bg-black rounded-t-xl"
@@ -393,6 +438,14 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
                         >
                           Your browser does not support the video element.
                         </video>
+                      ) : isAudio ? (
+                        <div className="p-8 flex flex-col items-center justify-center gap-4 bg-slate-900 text-white">
+                          <Play className="w-10 h-10 text-emerald-400" />
+                          <p className="text-xs font-semibold">{activeLesson.title}</p>
+                          <audio controls className="w-full max-w-md" src={publicUrl}>
+                            Your browser does not support the audio element.
+                          </audio>
+                        </div>
                       ) : isPdf ? (
                         <iframe
                           src={publicUrl}
@@ -412,6 +465,7 @@ export default function CourseDetailsPage({ params }: { params?: { id?: string }
                           </a>
                         </div>
                       )}
+
 
                       {/* Interactive Lesson Summary & Notes Deck */}
                       <div className="p-4 bg-white border-t border-slate-100 space-y-2">

@@ -6,24 +6,13 @@ import { apiFetch } from '../../lib/api';
 import { 
   User, Award, Flame, Sparkles, CheckCircle2, AlertCircle, Save, 
   Lock, KeyRound, ShieldCheck, Trophy, Activity, ShoppingCart, 
-  BrainCircuit, Calendar, FileText
+  BrainCircuit, Calendar, FileText, Receipt, Printer, X
 } from 'lucide-react';
 import { BadgeGrid } from '../../components/gamification/BadgeGrid';
+import { Avatar } from '../../components/ui/Avatar';
+import { LOCAL_AVATAR_PRESETS, generateLocalAvatarSvg } from '../../lib/avatar';
 
-const AVATAR_SEEDS = [
-  { id: 'felix', name: 'Felix' },
-  { id: 'kitty', name: 'Kitty' },
-  { id: 'buddy', name: 'Buddy' },
-  { id: 'sparky', name: 'Sparky' },
-  { id: 'pepper', name: 'Pepper' },
-  { id: 'luna', name: 'Luna' },
-  { id: 'shadow', name: 'Shadow' },
-  { id: 'rocky', name: 'Rocky' },
-  { id: 'coco', name: 'Coco' },
-  { id: 'sunny', name: 'Sunny' },
-  { id: 'daisy', name: 'Daisy' },
-  { id: 'rusty', name: 'Rusty' }
-];
+
 
 export default function ProfilePage() {
   const { user, isAuthenticated, fetchProfile } = useAuthStore();
@@ -43,6 +32,9 @@ export default function ProfilePage() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
+  // Receipt Modal state
+  const [selectedReceipt, setSelectedReceipt] = useState<PurchaseHistoryItem | null>(null);
+
   useEffect(() => {
     if (isAuthenticated && !user) {
       fetchProfile();
@@ -54,9 +46,13 @@ export default function ProfilePage() {
       setName(user.name);
       if (user.avatarUrl) {
         try {
-          const urlParams = new URL(user.avatarUrl);
-          const seedParam = urlParams.searchParams.get('seed') || 'felix';
-          setSelectedAvatar(seedParam);
+          if (user.avatarUrl.includes('seed=')) {
+            const urlParams = new URL(user.avatarUrl);
+            const seedParam = urlParams.searchParams.get('seed') || 'felix';
+            setSelectedAvatar(seedParam);
+          } else {
+            setSelectedAvatar('felix');
+          }
         } catch {
           setSelectedAvatar('felix');
         }
@@ -74,7 +70,7 @@ export default function ProfilePage() {
     setProfileSuccess(false);
     setProfileError(null);
 
-    const fullAvatarUrl = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${selectedAvatar}`;
+    const fullAvatarUrl = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(selectedAvatar)}`;
 
     try {
       await apiFetch('/api/profile', {
@@ -155,13 +151,13 @@ export default function ProfilePage() {
           <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-premium space-y-6 text-center">
             
             {/* Huge Avatar Circle */}
-            <div className="w-24 h-24 rounded-full border-4 border-primary/20 flex items-center justify-center bg-slate-100 text-slate-500 font-semibold relative overflow-hidden mx-auto shadow-md">
-              <img 
-                src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${selectedAvatar}`} 
-                alt="Avatar" 
-                width="96"
-                height="96"
-                className="w-full h-full object-cover" 
+            <div className="mx-auto flex justify-center">
+              <Avatar 
+                src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${encodeURIComponent(selectedAvatar)}`}
+                seed={selectedAvatar}
+                name={user.name} 
+                size="xl" 
+                className="w-24 h-24 text-2xl border-4 border-primary/20 shadow-md" 
               />
             </div>
 
@@ -204,7 +200,7 @@ export default function ProfilePage() {
                 ></div>
               </div>
               <p className="text-[10px] text-slate-400 text-left font-medium">
-                Collect another {250 - ((user.stats?.totalXp || 0) % 250)} XP by passing grammar quizzes to level up!
+                Collect another {Math.max(0, (user.stats?.xpNeededForNextLevel ?? 250) - (user.stats?.xpInLevel ?? 0))} XP to level up!
               </p>
             </div>
           </div>
@@ -281,7 +277,7 @@ export default function ProfilePage() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2.5 text-sm border border-slate-100 rounded-xl bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                  className="w-full px-4 py-2.5 min-h-[44px] text-base sm:text-sm border border-slate-100 rounded-xl bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
                 />
               </div>
 
@@ -289,23 +285,22 @@ export default function ProfilePage() {
               <div className="space-y-3">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Select Avatar Character</label>
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-                  {AVATAR_SEEDS.map((seed) => {
+                  {LOCAL_AVATAR_PRESETS.map((seed) => {
                     const isSelected = selectedAvatar === seed.id;
-                    const avatarUrl = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${seed.id}`;
                     return (
                       <button
                         key={seed.id}
                         type="button"
                         onClick={() => setSelectedAvatar(seed.id)}
-                        className={`w-14 h-14 rounded-xl border-2 overflow-hidden flex items-center justify-center p-0.5 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 transition relative ${
+                        className={`min-w-[44px] min-h-[44px] w-14 h-14 rounded-xl border-2 overflow-hidden flex items-center justify-center p-1 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 transition relative ${
                           isSelected ? 'border-primary ring-2 ring-primary/20 scale-105 shadow-sm' : 'border-slate-100'
                         }`}
                         title={seed.name}
                       >
-                        <img src={avatarUrl} alt={seed.name} width="48" height="48" className="w-full h-full object-cover" />
+                        <Avatar src={seed.url} seed={seed.id} name={seed.name} size="sm" className="w-full h-full rounded-lg" />
                         {isSelected && (
-                          <div className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-primary flex items-center justify-center text-white p-0.5">
-                            <CheckCircle2 className="w-2.5 h-2.5 fill-white text-primary" />
+                          <div className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center text-white p-0.5 shadow">
+                            <CheckCircle2 className="w-3 h-3 fill-white text-primary" />
                           </div>
                         )}
                       </button>
@@ -318,7 +313,7 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={savingProfile}
-                  className="btn-primary text-xs py-2.5 w-full sm:w-auto inline-flex items-center justify-center gap-1.5 active:scale-95"
+                  className="btn-primary min-h-[44px] text-xs py-2.5 px-5 w-full sm:w-auto inline-flex items-center justify-center gap-1.5 active:scale-95"
                 >
                   <Save className="w-4 h-4" />
                   {savingProfile ? 'Saving Details...' : 'Save Profile Changes'}
@@ -357,7 +352,7 @@ export default function ProfilePage() {
                     required
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm border border-slate-100 rounded-xl bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                    className="w-full px-4 py-2.5 min-h-[44px] text-base sm:text-sm border border-slate-100 rounded-xl bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -367,7 +362,7 @@ export default function ProfilePage() {
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm border border-slate-100 rounded-xl bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                    className="w-full px-4 py-2.5 min-h-[44px] text-base sm:text-sm border border-slate-100 rounded-xl bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -377,7 +372,7 @@ export default function ProfilePage() {
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm border border-slate-100 rounded-xl bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
+                    className="w-full px-4 py-2.5 min-h-[44px] text-base sm:text-sm border border-slate-100 rounded-xl bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition"
                   />
                 </div>
               </div>
@@ -386,7 +381,7 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={savingPassword}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-md transition active:scale-95 flex items-center gap-1.5"
+                  className="min-h-[44px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5"
                 >
                   <KeyRound className="w-4 h-4" />
                   {savingPassword ? 'Changing Password...' : 'Change Password'}
@@ -410,21 +405,37 @@ export default function ProfilePage() {
               {/* Purchases */}
               <div className="space-y-4">
                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <ShoppingCart className="w-3.5 h-3.5" /> Course Purchases
+                  <ShoppingCart className="w-3.5 h-3.5" /> Order History &amp; Receipts
                 </h4>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {(user.purchaseHistory || []).length > 0 ? (
                     (user.purchaseHistory as PurchaseHistoryItem[]).map((purchase) => (
-                      <div key={purchase.id} className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                        <p className="text-xs font-bold text-slate-700 truncate">{purchase.courseTitle}</p>
-                        <div className="flex justify-between items-center mt-1">
-                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 rounded-sm">${purchase.amount}</span>
-                          <span className="text-[9px] text-slate-400">{new Date(purchase.createdAt).toLocaleDateString()}</span>
+                      <div key={purchase.id} className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between gap-3 hover:border-indigo-200 transition">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-800 truncate">{purchase.courseTitle}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                              ₹{Number(purchase.amount).toFixed(2)}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {new Date(purchase.createdAt).toLocaleDateString()}
+                            </span>
+                            <span className="text-[9px] font-extrabold uppercase tracking-wider text-emerald-600 bg-emerald-100/60 px-1.5 py-0.2 rounded">
+                              Paid
+                            </span>
+                          </div>
                         </div>
+                        <button
+                          onClick={() => setSelectedReceipt(purchase)}
+                          className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-300 text-indigo-600 text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-xs"
+                        >
+                          <Receipt className="w-3.5 h-3.5" />
+                          <span>Receipt</span>
+                        </button>
                       </div>
                     ))
                   ) : (
-                    <p className="text-[10px] text-slate-400">No purchases found.</p>
+                    <p className="text-xs text-slate-400">No purchases found.</p>
                   )}
                 </div>
               </div>
@@ -448,7 +459,7 @@ export default function ProfilePage() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-[10px] text-slate-400">No quiz attempts yet.</p>
+                    <p className="text-xs text-slate-400">No quiz attempts yet.</p>
                   )}
                 </div>
               </div>
@@ -456,6 +467,114 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Tax Invoice & Receipt Modal */}
+      {selectedReceipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative border border-slate-100 space-y-6">
+            <button
+              onClick={() => setSelectedReceipt(null)}
+              aria-label="Close receipt"
+              className="absolute top-4 right-4 min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200/60">
+                  Tax Invoice &bull; Paid
+                </span>
+                <h3 className="font-display font-black text-xl text-slate-900 mt-2">
+                  Payment Receipt
+                </h3>
+              </div>
+              <div className="text-right">
+                <p className="font-mono text-xs font-bold text-slate-700">
+                  INV-{selectedReceipt.id.slice(0, 8).toUpperCase()}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  {new Date(selectedReceipt.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+
+            {/* Customer Details */}
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Billed To</span>
+                <span className="font-extrabold text-slate-800 block truncate">{user.name}</span>
+                <span className="text-slate-500 text-[11px] block truncate">{user.email}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Payment Method</span>
+                <span className="font-extrabold text-slate-800 block">Razorpay PG</span>
+                <span className="text-emerald-700 text-[11px] font-bold block">Status: SUCCESS</span>
+              </div>
+            </div>
+
+            {/* Item Table */}
+            <div className="border border-slate-100 rounded-2xl overflow-hidden">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                  <tr>
+                    <th className="py-2.5 px-4">Item</th>
+                    <th className="py-2.5 px-4 text-right">Price</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  <tr>
+                    <td className="py-3 px-4 font-bold text-slate-900">
+                      {selectedReceipt.courseTitle}
+                      <span className="block text-[10px] text-slate-400 font-normal">Full Lifetime Curriculum Access</span>
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-extrabold text-slate-900">
+                      ₹{Number(selectedReceipt.amount).toFixed(2)}
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot className="bg-slate-50 font-bold">
+                  <tr>
+                    <td className="py-2.5 px-4 text-slate-600">Taxes &amp; Fees (GST Included)</td>
+                    <td className="py-2.5 px-4 text-right font-mono text-slate-600">₹0.00</td>
+                  </tr>
+                  <tr className="border-t border-slate-200">
+                    <td className="py-3 px-4 text-sm font-black text-slate-900">Total Paid</td>
+                    <td className="py-3 px-4 text-right font-mono text-sm font-black text-emerald-700">
+                      ₹{Number(selectedReceipt.amount).toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <span className="text-[11px] text-slate-400">
+                Official Antigravity LMS Digital Invoice
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition flex items-center gap-1.5"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Print</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedReceipt(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

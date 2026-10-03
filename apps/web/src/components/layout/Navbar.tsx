@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Zap, BookOpen, Trophy, Home, User, LogOut, ShieldAlert, Terminal, Sparkles } from 'lucide-react';
 import { StreakBadge } from '../gamification/StreakBadge';
+import { Avatar } from '../ui/Avatar';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
@@ -68,10 +69,10 @@ export const Navbar: React.FC = () => {
         {/* Right Section */}
         <div className="flex items-center gap-3">
           {/* Streak Badge */}
-          {user?.stats && (
+          {user && (
             <StreakBadge
-              currentStreak={user.stats.currentStreak}
-              longestStreak={user.stats.longestStreak}
+              currentStreak={user.stats?.currentStreak ?? 0}
+              longestStreak={user.stats?.longestStreak}
               size="sm"
             />
           )}
@@ -82,19 +83,9 @@ export const Navbar: React.FC = () => {
               onClick={() => setDropdownOpen(!dropdownOpen)}
               aria-label="User Profile Menu"
               aria-expanded={dropdownOpen}
-              className="w-9 h-9 rounded-full border-2 border-slate-200 overflow-hidden bg-slate-100 hover:border-primary/40 transition flex items-center justify-center focus:outline-none"
+              className="min-w-[44px] min-h-[44px] p-0.5 rounded-full border-2 border-slate-200 overflow-hidden bg-slate-100 hover:border-primary/40 transition flex items-center justify-center focus:outline-none"
             >
-              {user?.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt="Avatar"
-                  width="36"
-                  height="36"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <User className="w-4 h-4 text-slate-500" />
-              )}
+              <Avatar src={user?.avatarUrl} name={user?.name} size="sm" />
             </button>
 
             {dropdownOpen && (

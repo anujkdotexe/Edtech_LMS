@@ -30,6 +30,19 @@ export const publicSettingsSchema: FastifySchema = {
   }
 };
 
+// Shared User Gamification Stats Schema Properties
+const userStatsSchemaProperties = {
+  totalXp: { type: 'number', example: 1250 },
+  level: { type: 'number', example: 6 },
+  xpInLevel: { type: 'number', example: 50 },
+  xpNeededForNextLevel: { type: 'number', example: 250 },
+  progressPercent: { type: 'number', example: 20 },
+  currentStreak: { type: 'number', example: 5 },
+  longestStreak: { type: 'number', example: 12 },
+  lastActiveDate: { type: 'string', nullable: true, example: '2026-10-03' },
+  warmupCompletedToday: { type: 'boolean', example: false },
+};
+
 // 2. Authentication Router Schemas
 export const signupSchema: FastifySchema = {
   description: 'Register a new student account',
@@ -54,7 +67,8 @@ export const signupSchema: FastifySchema = {
         role: { type: 'string', example: 'STUDENT' },
         avatarUrl: { type: 'string', nullable: true, example: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=John' },
         forcePasswordReset: { type: 'boolean', example: false },
-        lastLoginAt: { type: 'string', nullable: true }
+        lastLoginAt: { type: 'string', nullable: true },
+        stats: { type: 'object', properties: userStatsSchemaProperties },
       }
     },
     400: {
@@ -87,7 +101,8 @@ export const loginSchema: FastifySchema = {
         email: { type: 'string', example: 'student@lms.local' },
         role: { type: 'string', example: 'STUDENT' },
         avatarUrl: { type: 'string', nullable: true, example: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=John' },
-        forcePasswordReset: { type: 'boolean', example: false }
+        forcePasswordReset: { type: 'boolean', example: false },
+        stats: { type: 'object', properties: userStatsSchemaProperties },
       }
     },
     401: {
@@ -200,7 +215,8 @@ export const googleOAuthSchema: FastifySchema = {
         email: { type: 'string', example: 'student@lms.local' },
         role: { type: 'string', example: 'STUDENT' },
         avatarUrl: { type: 'string', nullable: true, example: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=John' },
-        forcePasswordReset: { type: 'boolean', example: false }
+        forcePasswordReset: { type: 'boolean', example: false },
+        stats: { type: 'object', properties: userStatsSchemaProperties },
       }
     }
   }
@@ -220,6 +236,7 @@ export const getMeSchema: FastifySchema = {
         avatarUrl: { type: 'string', nullable: true, example: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=John' },
         forcePasswordReset: { type: 'boolean', example: false },
         lastLoginAt: { type: 'string', nullable: true, example: '2026-05-21T09:10:27Z' },
+        stats: { type: 'object', properties: userStatsSchemaProperties },
       },
     },
     401: {
@@ -321,6 +338,8 @@ export const courseByIdSchema: FastifySchema = {
         isPublished: { type: 'boolean', example: true },
         isUnlocked: { type: 'boolean', example: true },
         progressPercent: { type: 'number', example: 50 },
+        totalLessonsCount: { type: 'number', example: 10 },
+        completedLessonsCount: { type: 'number', example: 5 },
         title: { type: 'string', example: 'Spanish A1' },
         description: { type: 'string', example: 'Spanish details' },
         modules: {
@@ -425,7 +444,8 @@ export const purchaseCourseSchema: FastifySchema = {
     type: 'object',
     properties: {
       simulatedStatus: { type: 'string', enum: ['SUCCESS', 'FAILED'], example: 'SUCCESS' }
-    }
+    },
+    additionalProperties: false
   },
   response: {
     200: {
@@ -433,7 +453,9 @@ export const purchaseCourseSchema: FastifySchema = {
       properties: {
         success: { type: 'boolean', example: true },
         message: { type: 'string', example: 'Course unlocked successfully' },
-        transactionId: { type: 'string', example: 'TXN-98425102' }
+        transactionId: { type: 'string', example: 'TXN-98425102' },
+        orderId: { type: 'string', example: 'order-uuid' },
+        status: { type: 'string', example: 'SUCCESS' }
       }
     },
     400: {
@@ -441,7 +463,9 @@ export const purchaseCourseSchema: FastifySchema = {
       properties: {
         success: { type: 'boolean', example: false },
         message: { type: 'string', example: 'Simulated payment failed' },
-        transactionId: { type: 'string', example: 'TXN-98425102' }
+        transactionId: { type: 'string', example: 'TXN-98425102' },
+        orderId: { type: 'string', example: 'order-uuid' },
+        status: { type: 'string', example: 'FAILED' }
       }
     }
   }
@@ -996,12 +1020,17 @@ export const adminGetStudentsSchema: FastifySchema = {
           id: { type: 'string', example: 'user-uuid' },
           name: { type: 'string', example: 'John Doe' },
           email: { type: 'string', example: 'student@lms.local' },
+          avatarUrl: { type: 'string', nullable: true, example: 'data:image/svg+xml;utf8,...' },
           role: { type: 'string', example: 'STUDENT' },
+          isActive: { type: 'boolean', example: true },
           isSuspended: { type: 'boolean', example: false },
           createdAt: { type: 'string', example: '2026-05-21T09:10:27Z' },
+          lastLoginAt: { type: ['string', 'null'], example: '2026-05-21T09:10:27Z' },
           level: { type: 'number', example: 2 },
           totalXp: { type: 'number', example: 550 },
-          currentStreak: { type: 'number', example: 3 }
+          currentStreak: { type: 'number', example: 3 },
+          enrolledCourses: { type: 'array', items: { type: 'string' } },
+          enrolledCourseIds: { type: 'array', items: { type: 'string' } }
         }
       }
     }

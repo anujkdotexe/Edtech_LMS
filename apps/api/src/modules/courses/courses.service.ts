@@ -1,8 +1,13 @@
+import { eq } from 'drizzle-orm';
 import { CoursesRepository } from './courses.repository';
 import { NotFoundError, ValidationError, ForbiddenError } from '../../errors';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 import { CourseCatalogItem, CourseDetail, LessonItem, ModuleItem } from './courses.types';
+import { paymentGateway } from '../../common/payments';
+import { emailService } from '../../common/email';
+
+
 
 export class CoursesService {
   static async getAllCourses(
@@ -151,6 +156,8 @@ export class CoursesService {
       title: courseTrans ? courseTrans.title : 'Untitled Course',
       description: courseTrans ? courseTrans.description : '',
       modules: syllabusModules,
+      totalLessonsCount,
+      completedLessonsCount,
       progressPercent,
     };
   }
@@ -231,7 +238,20 @@ export class CoursesService {
     }
 
     const orderStatus = simulatedStatus === 'FAILED' ? 'FAILED' : 'SUCCESS';
-    const transactionId = 'mock_tx_' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    
+    // Resolve course title from translations
+    const translations = await CoursesRepository.findCourseTranslationsById(courseId);
+    const courseTitle = translations[0]?.title || 'Course ' + course.cefrLevel;
+
+    // Obtain gateway order or transaction reference
+    const gatewayOrder = await paymentGateway.createOrder({
+      courseId,
+      courseTitle,
+      amount: Number(course.price),
+      userId: user.userId,
+      userEmail: '',
+    });
+    const transactionId = `${paymentGateway.providerName.toLowerCase()}_${gatewayOrder.orderId}`;
 
     const newOrder = await CoursesRepository.createOrder({
       userId: user.userId,
@@ -245,9 +265,26 @@ export class CoursesService {
       userId: user.userId,
       impersonatedBy: user.impersonatedBy,
       action: 'COURSE_PURCHASE_SIMULATION',
-      details: `Simulated checkout completed with status ${orderStatus} for course ID ${courseId}. Transaction: ${transactionId}`,
+      details: `[${paymentGateway.providerName}] Checkout completed with status ${orderStatus} for course ID ${courseId}. Transaction: ${transactionId}`,
       ipAddress: ip,
     });
+
+    // Notify student on successful enrollment if email is available
+    if (orderStatus === 'SUCCESS') {
+      const studentRows = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, user.userId))
+        .limit(1);
+      const student = studentRows[0];
+      if (student?.email) {
+        await emailService.sendEmail({
+          to: student.email,
+          subject: `Enrollment Confirmed: ${courseTitle}`,
+          text: `Hello ${student.name},\n\nYou have successfully enrolled in ${courseTitle}. Log in now to access your lessons and earn XP!`,
+        });
+      }
+    }
 
     return {
       success: orderStatus === 'SUCCESS',
@@ -255,7 +292,7 @@ export class CoursesService {
       status: orderStatus,
       transactionId,
       message:
-        orderStatus === 'SUCCESS' ? 'Course successfully unlocked' : 'Simulated payment failed',
+        orderStatus === 'SUCCESS' ? 'Course successfully unlocked' : 'Payment failed',
     };
   }
 

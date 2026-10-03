@@ -266,3 +266,28 @@ export const featureFlags = pgTable('feature_flags', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+// 21. system_badges
+export const systemBadges = pgTable('system_badges', {
+  id: varchar('id', { length: 50 }).primaryKey().notNull(),
+  name: varchar('name', { length: 100 }).notNull(),
+  description: text('description').notNull(),
+  icon: varchar('icon', { length: 50 }).default('Award').notNull(),
+  criteriaType: varchar('criteria_type', { length: 50 }).default('ACTION').notNull(),
+  criteriaThreshold: integer('criteria_threshold').default(1).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+// 22. daily_warmup_challenges
+export const dailyWarmupChallenges = pgTable('daily_warmup_challenges', {
+  id: varchar('id', { length: 100 }).primaryKey().notNull(),
+  language: varchar('language', { length: 50 }).notNull(),
+  prompt: text('prompt').notNull(),
+  options: text('options').notNull(),
+  correctAnswer: varchar('correct_answer', { length: 255 }).notNull(),
+  xpReward: integer('xp_reward').default(25).notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+

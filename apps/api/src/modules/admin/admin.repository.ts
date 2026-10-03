@@ -30,6 +30,7 @@ export class AdminRepository {
         id: schema.users.id,
         name: schema.users.name,
         email: schema.users.email,
+        avatarUrl: schema.users.avatarUrl,
         role: schema.users.role,
         isSuspended: schema.users.isSuspended,
         createdAt: schema.users.createdAt,
@@ -672,5 +673,27 @@ export class AdminRepository {
 
   static async deleteQuestion(id: string) {
     await db.delete(schema.quizQuestions).where(eq(schema.quizQuestions.id, id));
+  }
+
+  // ─── Badges Management ──────────────────────────────────────────────────
+  static async getAllBadges() {
+    return await db.select().from(schema.systemBadges);
+  }
+
+  static async getBadgeById(id: string) {
+    const rows = await db.select().from(schema.systemBadges).where(eq(schema.systemBadges.id, id)).limit(1);
+    return rows[0] || null;
+  }
+
+  static async updateBadge(id: string, updates: { name?: string; description?: string; icon?: string; criteriaType?: string; criteriaThreshold?: number }) {
+    const [updated] = await db
+      .update(schema.systemBadges)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.systemBadges.id, id))
+      .returning();
+    return updated || null;
   }
 }

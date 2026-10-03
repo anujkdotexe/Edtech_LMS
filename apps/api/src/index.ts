@@ -17,6 +17,7 @@ import { ProfileController } from './modules/profile/profile.controller';
 import { leaderboardRoutes } from './modules/leaderboard/leaderboard.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
 import { devRoutes } from './modules/dev/dev.routes';
+import { mockGatewayRoutes } from './common/payments/mock.routes';
 import fastifyMultipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
@@ -144,6 +145,11 @@ server.register(async (api) => {
     handler: AdminController.getPublicSettings,
   });
 
+  // Public system badges catalog
+  api.get('/api/public/badges', {
+    handler: AdminController.getBadges,
+  });
+
   // 2. Authentication Router
   await api.register(authRoutes, { prefix: '/api/auth' });
 
@@ -176,6 +182,9 @@ server.register(async (api) => {
 
   // 8. Admin Unified CRM & Content Router
   await api.register(adminRoutes, { prefix: '/api/admin' });
+
+  // 9. Local Zero-Cost Mock Payment Gateway Router
+  await api.register(mockGatewayRoutes, { prefix: '/api/mock-gateway' });
 });
 
 server.register(swaggerUI, {

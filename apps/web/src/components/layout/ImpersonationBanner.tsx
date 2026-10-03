@@ -17,7 +17,7 @@ export const ImpersonationBanner: React.FC = () => {
       </div>
       <button
         onClick={unimpersonate}
-        className="bg-white hover:bg-slate-100 text-rose-700 font-bold px-3 py-1 rounded shadow-sm transition active:scale-95"
+        className="min-h-[44px] px-3.5 py-1.5 bg-white hover:bg-slate-100 text-rose-700 font-bold rounded-lg shadow-sm transition active:scale-95 flex items-center justify-center text-xs"
       >
         RESTORE SESSION
       </button>

@@ -22,6 +22,7 @@ async function main() {
     console.log('[INFO] Purging old database tables...');
     await db.delete(schema.lessonCompletions);
     await db.delete(schema.dailyWarmupCompletions);
+    await db.delete(schema.dailyWarmupChallenges);
     await db.delete(schema.featureFlags);
     await db.delete(schema.auditLogs);
     await db.delete(schema.orders);
@@ -36,6 +37,7 @@ async function main() {
     await db.delete(schema.courseTranslations);
     await db.delete(schema.courses);
     await db.delete(schema.userBadges);
+    await db.delete(schema.systemBadges);
     await db.delete(schema.userStreaks);
     await db.delete(schema.userXp);
     await db.delete(schema.siteConfig);
@@ -129,8 +131,8 @@ async function main() {
     const coursesData = [
       {
         cefrLevel: 'A1',
-        price: '0.00',
-        isPremium: false,
+        price: '499.00',
+        isPremium: true,
         isPublished: true,
         enTitle: 'Elementary French A1',
         enDesc: 'Learn foundational grammar, common greetings, and vocabulary for day-to-day conversation.',
@@ -154,7 +156,7 @@ async function main() {
       },
       {
         cefrLevel: 'A2',
-        price: '14.99',
+        price: '799.00',
         isPremium: true,
         isPublished: true,
         enTitle: 'Conversational French A2',
@@ -173,7 +175,7 @@ async function main() {
       },
       {
         cefrLevel: 'B1',
-        price: '19.99',
+        price: '999.00',
         isPremium: true,
         isPublished: true,
         enTitle: 'Intermediate German B1',
@@ -192,7 +194,7 @@ async function main() {
       },
       {
         cefrLevel: 'B2',
-        price: '24.99',
+        price: '1299.00',
         isPremium: true,
         isPublished: true,
         enTitle: 'Advanced German B2',
@@ -210,8 +212,8 @@ async function main() {
       },
       {
         cefrLevel: 'A1',
-        price: '0.00',
-        isPremium: false,
+        price: '499.00',
+        isPremium: true,
         isPublished: true,
         enTitle: 'Spanish for Beginners A1',
         enDesc: 'Master foundational Spanish: vowel sounds, fundamental phrases, and basic introductions.',
@@ -229,7 +231,7 @@ async function main() {
       },
       {
         cefrLevel: 'A2',
-        price: '14.99',
+        price: '799.00',
         isPremium: true,
         isPublished: true,
         enTitle: 'Spanish Everyday Fluency A2',
@@ -247,7 +249,7 @@ async function main() {
       },
       {
         cefrLevel: 'B1',
-        price: '19.99',
+        price: '999.00',
         isPremium: true,
         isPublished: true,
         enTitle: 'Italian Cultural Expressions B1',
@@ -265,7 +267,7 @@ async function main() {
       },
       {
         cefrLevel: 'C1',
-        price: '29.99',
+        price: '1499.00',
         isPremium: true,
         isPublished: true,
         enTitle: 'Professional Spanish Mastery C1',
@@ -555,7 +557,84 @@ async function main() {
         attemptedAt: new Date(),
       });
     }
-    console.log('[OK] Quiz attempts seeded.');
+    // 7.5 Seed System Badges & Daily Warmup Challenges
+    console.log('[INFO] Seeding system badges...');
+    await db.insert(schema.systemBadges).values([
+      { id: 'scholar_1', name: 'First Steps', description: 'Earned your first badge in the curriculum.', icon: 'Award', criteriaType: 'ACTION', criteriaThreshold: 1 },
+      { id: 'streak_3', name: 'Dedicated Learner', description: 'Maintained a 3-day study streak!', icon: 'Flame', criteriaType: 'STREAK', criteriaThreshold: 3 },
+      { id: 'streak_7', name: 'Unstoppable Habit', description: 'Maintained a 7-day study streak!', icon: 'Flame', criteriaType: 'STREAK', criteriaThreshold: 7 },
+      { id: 'centurion_streak', name: 'Centurion Streak', description: 'Maintained an epic 30-day study streak!', icon: 'Crown', criteriaType: 'STREAK', criteriaThreshold: 30 },
+      { id: 'quiz_master', name: 'Perfect Score', description: 'Scored 100% on a challenging quiz!', icon: 'Trophy', criteriaType: 'SCORE', criteriaThreshold: 100 },
+      { id: 'level_5', name: 'Fluent Speaker', description: 'Reached Level 5 in curriculum!', icon: 'Sparkles', criteriaType: 'LEVEL', criteriaThreshold: 5 },
+      { id: 'level_10', name: 'Grandmaster Linguist', description: 'Reached Level 10 of language mastery!', icon: 'Trophy', criteriaType: 'LEVEL', criteriaThreshold: 10 },
+    ]);
+
+    console.log('[INFO] Seeding daily warmup challenges...');
+    await db.insert(schema.dailyWarmupChallenges).values([
+      {
+        id: 'vocab_fr_book',
+        language: 'French',
+        prompt: 'Choose the correct French translation for "The Book":',
+        options: JSON.stringify(['Le livre', 'La porte', 'La maison', 'Le stylo']),
+        correctAnswer: 'Le livre',
+        xpReward: 25,
+        isActive: true,
+      },
+      {
+        id: 'vocab_es_water',
+        language: 'Spanish',
+        prompt: 'Choose the correct Spanish translation for "Water":',
+        options: JSON.stringify(['El agua', 'El fuego', 'El pan', 'La leche']),
+        correctAnswer: 'El agua',
+        xpReward: 25,
+        isActive: true,
+      },
+      {
+        id: 'vocab_de_apple',
+        language: 'German',
+        prompt: 'Choose the correct German translation for "The Apple":',
+        options: JSON.stringify(['Der Apfel', 'Die Banane', 'Das Brot', 'Das Wasser']),
+        correctAnswer: 'Der Apfel',
+        xpReward: 25,
+        isActive: true,
+      },
+      {
+        id: 'vocab_fr_morning',
+        language: 'French',
+        prompt: 'How do you greet someone in the morning in French?',
+        options: JSON.stringify(['Bonjour', 'Bonne nuit', 'Au revoir', "S'il vous plaît"]),
+        correctAnswer: 'Bonjour',
+        xpReward: 25,
+        isActive: true,
+      },
+      {
+        id: 'vocab_es_house',
+        language: 'Spanish',
+        prompt: 'Choose the correct Spanish translation for "The House":',
+        options: JSON.stringify(['La casa', 'La mesa', 'La silla', 'El coche']),
+        correctAnswer: 'La casa',
+        xpReward: 25,
+        isActive: true,
+      },
+      {
+        id: 'vocab_de_cat',
+        language: 'German',
+        prompt: 'Choose the correct German translation for "The Cat":',
+        options: JSON.stringify(['Die Katze', 'Der Hund', 'Das Pferd', 'Die Maus']),
+        correctAnswer: 'Die Katze',
+        xpReward: 25,
+        isActive: true,
+      },
+      {
+        id: 'vocab_it_coffee',
+        language: 'Italian',
+        prompt: 'Choose the correct Italian translation for "The Coffee":',
+        options: JSON.stringify(['Il caffè', 'Il tè', 'Il vino', 'La pizza']),
+        correctAnswer: 'Il caffè',
+        xpReward: 25,
+        isActive: true,
+      },
+    ]);
 
     // 8. Seed Badges for Students
     console.log('[INFO] Awarding badges to students...');
@@ -573,21 +652,21 @@ async function main() {
     ]);
     console.log('[OK] Badges seeded.');
 
-    // 9. Seed Real Orders across SUCCESS ($189.90), REFUNDED, PENDING
+    // 9. Seed Real Orders across SUCCESS, REFUNDED, PENDING
     console.log('[INFO] Seeding orders and transactions for analytics...');
     const ordersData = [
-      { userId: primaryStudent.id, courseId: insertedCourses[0].id, status: 'SUCCESS', amount: '0.00', txn: 'txn_free_a1' },
-      { userId: createdStudents[1].id, courseId: insertedCourses[1].id, status: 'SUCCESS', amount: '14.99', txn: 'txn_m_a2' },
-      { userId: createdStudents[1].id, courseId: insertedCourses[2].id, status: 'SUCCESS', amount: '19.99', txn: 'txn_m_b1' },
-      { userId: createdStudents[1].id, courseId: insertedCourses[3].id, status: 'SUCCESS', amount: '24.99', txn: 'txn_m_b2' },
-      { userId: createdStudents[2].id, courseId: insertedCourses[1].id, status: 'SUCCESS', amount: '14.99', txn: 'txn_s_a2' },
-      { userId: createdStudents[2].id, courseId: insertedCourses[6].id, status: 'SUCCESS', amount: '19.99', txn: 'txn_s_it' },
-      { userId: createdStudents[3].id, courseId: insertedCourses[2].id, status: 'SUCCESS', amount: '19.99', txn: 'txn_l_b1' },
-      { userId: createdStudents[4].id, courseId: insertedCourses[5].id, status: 'SUCCESS', amount: '14.99', txn: 'txn_e_es' },
-      { userId: createdStudents[5].id, courseId: insertedCourses[6].id, status: 'SUCCESS', amount: '19.99', txn: 'txn_mat_it' },
-      { userId: createdStudents[6].id, courseId: insertedCourses[7].id, status: 'SUCCESS', amount: '29.99', txn: 'txn_ch_c1' },
-      { userId: createdStudents[7].id, courseId: insertedCourses[2].id, status: 'REFUNDED', amount: '19.99', txn: 'txn_ref_b1' },
-      { userId: createdStudents[8].id, courseId: insertedCourses[5].id, status: 'PENDING', amount: '14.99', txn: 'txn_pen_es' },
+      { userId: primaryStudent.id, courseId: insertedCourses[0].id, status: 'SUCCESS', amount: '499.00', txn: 'txn_free_a1' },
+      { userId: createdStudents[1].id, courseId: insertedCourses[1].id, status: 'SUCCESS', amount: '799.00', txn: 'txn_m_a2' },
+      { userId: createdStudents[1].id, courseId: insertedCourses[2].id, status: 'SUCCESS', amount: '999.00', txn: 'txn_m_b1' },
+      { userId: createdStudents[1].id, courseId: insertedCourses[3].id, status: 'SUCCESS', amount: '1299.00', txn: 'txn_m_b2' },
+      { userId: createdStudents[2].id, courseId: insertedCourses[1].id, status: 'SUCCESS', amount: '799.00', txn: 'txn_s_a2' },
+      { userId: createdStudents[2].id, courseId: insertedCourses[6].id, status: 'SUCCESS', amount: '999.00', txn: 'txn_s_it' },
+      { userId: createdStudents[3].id, courseId: insertedCourses[2].id, status: 'SUCCESS', amount: '999.00', txn: 'txn_l_b1' },
+      { userId: createdStudents[4].id, courseId: insertedCourses[5].id, status: 'SUCCESS', amount: '799.00', txn: 'txn_e_es' },
+      { userId: createdStudents[5].id, courseId: insertedCourses[6].id, status: 'SUCCESS', amount: '999.00', txn: 'txn_mat_it' },
+      { userId: createdStudents[6].id, courseId: insertedCourses[7].id, status: 'SUCCESS', amount: '1499.00', txn: 'txn_ch_c1' },
+      { userId: createdStudents[7].id, courseId: insertedCourses[2].id, status: 'REFUNDED', amount: '999.00', txn: 'txn_ref_b1' },
+      { userId: createdStudents[8].id, courseId: insertedCourses[5].id, status: 'PENDING', amount: '799.00', txn: 'txn_pen_es' },
     ];
 
     for (const o of ordersData) {

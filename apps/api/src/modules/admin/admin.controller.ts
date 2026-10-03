@@ -409,4 +409,25 @@ export class AdminController {
       return handleControllerError(reply, error, 'Could not delete question');
     }
   }
+
+  static async getBadges(_request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const badges = await AdminService.getAllBadges();
+      return sendSuccess(reply, badges);
+    } catch (error) {
+      return handleControllerError(reply, error, 'Could not retrieve badges');
+    }
+  }
+
+  static async updateBadge(
+    request: FastifyRequest<{ Params: { id: string }; Body: { name?: string; description?: string; icon?: string; criteriaType?: string; criteriaThreshold?: number } }>,
+    reply: FastifyReply
+  ) {
+    try {
+      const updated = await AdminService.updateBadge(request.params.id, request.body);
+      return sendSuccess(reply, updated);
+    } catch (error) {
+      return handleControllerError(reply, error, 'Could not update badge');
+    }
+  }
 }

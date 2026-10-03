@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Trophy, ChevronRight, User } from 'lucide-react';
+import { Avatar } from '../ui/Avatar';
 
 interface LeaderboardEntry {
   rank: number;
@@ -93,19 +94,7 @@ export const LeaderboardPreview: React.FC<LeaderboardPreviewProps> = ({
               >
                 <div className="flex items-center gap-2.5">
                   {rankBadge}
-                  <div className="w-7 h-7 rounded-full bg-slate-100 overflow-hidden border border-slate-200 flex items-center justify-center">
-                    {entry.avatarUrl ? (
-                      <img
-                        src={entry.avatarUrl}
-                        alt={entry.name}
-                        width="28"
-                        height="28"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-3.5 h-3.5 text-slate-500" />
-                    )}
-                  </div>
+                  <Avatar src={entry.avatarUrl} name={entry.name} size="xs" />
                   <span className="truncate max-w-[120px] font-medium">
                     {entry.name} {isMe && '(You)'}
                   </span>

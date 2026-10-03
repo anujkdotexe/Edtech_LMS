@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { apiFetch } from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Trophy, Award, Crown, User, AlertCircle } from 'lucide-react';
+import { Avatar } from '../../components/ui/Avatar';
 
 interface RankedStudent {
   rank: number;
@@ -128,13 +129,8 @@ export default function LeaderboardPage() {
           {/* 2nd Place Podium */}
           {secondPlace && (
             <div className="flex-1 w-full flex flex-col items-center group animate-[scaleIn_0.4s_ease-out]">
-              <div className="w-16 h-16 rounded-full border-2 border-slate-300 relative overflow-hidden bg-slate-100 mb-3 shadow-md group-hover:scale-105 transition">
-                {secondPlace.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={secondPlace.avatarUrl} alt={secondPlace.name} width="64" height="64" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-8 h-8 text-slate-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                )}
+              <div className="w-16 h-16 rounded-full border-2 border-slate-300 relative bg-slate-100 mb-3 shadow-md group-hover:scale-105 transition">
+                <Avatar src={secondPlace.avatarUrl} name={secondPlace.name} size="lg" className="w-full h-full" />
                 <div className="absolute -bottom-1 -right-1 bg-slate-300 text-slate-800 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full border border-white">
                   2
                 </div>
@@ -159,13 +155,8 @@ export default function LeaderboardPage() {
             <div className="flex-1 w-full flex flex-col items-center group order-first sm:order-none animate-[scaleIn_0.5s_ease-out] z-10">
               <Crown className="w-7 h-7 text-accent fill-amber-400 animate-bounce mb-1" />
               
-              <div className="w-20 h-20 rounded-full border-4 border-amber-400 relative overflow-hidden bg-slate-100 mb-3 shadow-premium group-hover:scale-105 transition ring-4 ring-amber-100">
-                {firstPlace.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={firstPlace.avatarUrl} alt={firstPlace.name} width="80" height="80" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-10 h-10 text-slate-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                )}
+              <div className="w-20 h-20 rounded-full border-4 border-amber-400 relative bg-slate-100 mb-3 shadow-premium group-hover:scale-105 transition ring-4 ring-amber-100">
+                <Avatar src={firstPlace.avatarUrl} name={firstPlace.name} size="xl" className="w-full h-full" />
                 <div className="absolute -bottom-1 -right-1 bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full border border-white">
                   1
                 </div>
@@ -188,13 +179,8 @@ export default function LeaderboardPage() {
           {/* 3rd Place Podium */}
           {thirdPlace && (
             <div className="flex-1 w-full flex flex-col items-center group animate-[scaleIn_0.6s_ease-out]">
-              <div className="w-16 h-16 rounded-full border-2 border-amber-600/30 relative overflow-hidden bg-slate-100 mb-3 shadow-md group-hover:scale-105 transition">
-                {thirdPlace.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={thirdPlace.avatarUrl} alt={thirdPlace.name} width="64" height="64" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-8 h-8 text-slate-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                )}
+              <div className="w-16 h-16 rounded-full border-2 border-amber-600/30 relative bg-slate-100 mb-3 shadow-md group-hover:scale-105 transition">
+                <Avatar src={thirdPlace.avatarUrl} name={thirdPlace.name} size="lg" className="w-full h-full" />
                 <div className="absolute -bottom-1 -right-1 bg-amber-700/60 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full border border-white">
                   3
                 </div>
@@ -253,14 +239,7 @@ export default function LeaderboardPage() {
                         {student.rank}
                       </td>
                       <td className="py-4 px-5 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full border relative overflow-hidden bg-slate-100 shrink-0">
-                          {student.avatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={student.avatarUrl} alt={student.name} width="32" height="32" className="w-full h-full object-cover" />
-                          ) : (
-                            <User className="w-4.5 h-4.5 text-slate-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                          )}
-                        </div>
+                        <Avatar src={student.avatarUrl} name={student.name} size="sm" className="shrink-0" />
                         <span className="font-display font-bold text-slate-800 text-sm leading-none">
                           {student.name}
                           {isCurrentUser && <span className="ml-1.5 text-[9px] bg-primary text-white px-2 py-0.5 rounded-full uppercase tracking-wider">You</span>}

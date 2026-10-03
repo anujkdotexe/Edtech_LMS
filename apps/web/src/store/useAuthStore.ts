@@ -65,12 +65,13 @@ export interface UserAuthProfile {
   avatarUrl: string | null;
   forcePasswordReset?: boolean;
   lastLoginAt?: string | null;
+  stats?: UserStats;
 }
 
 export function makeEmptyProfile(base: UserAuthProfile): UserProfile {
   return {
     ...base,
-    stats: {
+    stats: base.stats || {
       totalXp: 0,
       level: 1,
       xpInLevel: 0,
@@ -117,7 +118,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const me = await apiFetch<UserAuthProfile>('/api/auth/me');
       set((state) => ({
         user: state.user
-          ? { ...state.user, ...me }
+          ? {
+              ...state.user,
+              ...me,
+              stats: me.stats ? { ...state.user.stats, ...me.stats } : state.user.stats,
+            }
           : makeEmptyProfile(me),
         isAuthenticated: true,
         isLoading: false,
@@ -130,13 +135,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   fetchProfile: async () => {
-    set({ isLoading: true, error: null });
     try {
       const user = await apiFetch<UserProfile>('/api/profile');
       set({ user, isAuthenticated: true, isLoading: false });
       return user;
     } catch {
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      if (!get().user) {
+        set({ user: null, isAuthenticated: false, isLoading: false });
+      }
       return null;
     }
   },

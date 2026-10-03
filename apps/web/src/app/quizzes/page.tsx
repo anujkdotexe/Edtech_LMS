@@ -65,23 +65,23 @@ export default function StudentQuizCatalog() {
 
   return (
     <div className="space-y-8 animate-[fadeIn_0.4s_ease-out]">
-      {/* Header banner */}
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 rounded-3xl p-8 sm:p-10 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full blur-2xl transform -translate-x-1/4 translate-y-1/4"></div>
-
-        <div className="relative z-10 space-y-4 max-w-2xl">
+      {/* Header banner matching dashboard hero aesthetic */}
+      <div className="bg-gradient-to-r from-primary via-indigo-600 to-primary-dark rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+        <div className="relative z-10 space-y-3 max-w-2xl">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-bold text-indigo-100 border border-white/10">
             <Trophy className="w-3.5 h-3.5 text-amber-300" />
             <span>Interactive Assessment Arena</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight font-display flex items-center gap-3">
-            <BrainCircuit className="w-10 h-10 text-indigo-200" />
-            Challenge Quizzes
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight font-display text-white flex items-center gap-3">
+            <BrainCircuit className="w-8 h-8 text-indigo-200" />
+            Practice Quizzes &amp; Challenges
           </h1>
-          <p className="text-indigo-100 text-sm sm:text-base leading-relaxed font-medium">
-            Test your multilingual grammar, vocabulary, and sentence structures. Score +50 to +150 XP per quiz, maintain your streak, and climb the leaderboard!
+          <p className="text-xs sm:text-sm text-indigo-100 font-medium leading-relaxed">
+            Test your multilingual grammar, vocabulary, and sentence structures. Score +50 to +150 XP per quiz, maintain your daily streak, and climb the leaderboard!
           </p>
+        </div>
+        <div className="absolute right-0 bottom-0 opacity-10 translate-x-8 translate-y-8 pointer-events-none">
+          <Zap className="w-72 h-72 fill-white text-white" />
         </div>
       </div>
 

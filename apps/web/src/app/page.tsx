@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../store/useAuthStore';
@@ -21,10 +21,12 @@ import {
 } from 'lucide-react';
 import { StatsOverview } from '../components/dashboard/StatsOverview';
 import { DailyWarmupCard } from '../components/dashboard/DailyWarmupCard';
+import { DailyWarmupModal } from '../components/dashboard/DailyWarmupModal';
 import { LeaderboardPreview } from '../components/dashboard/LeaderboardPreview';
 import { CourseCard, CourseItem } from '../components/courses/CourseCard';
 import { QuizCard, QuizItem } from '../components/quizzes/QuizCard';
 import { PurchaseModal } from '../components/courses/PurchaseModal';
+import { RazorpaySimulatorModal } from '../components/courses/RazorpaySimulatorModal';
 import { BadgeGrid } from '../components/gamification/BadgeGrid';
 
 export default function DashboardPage() {
@@ -38,11 +40,22 @@ export default function DashboardPage() {
   const [dailyTip, setDailyTip] = useState<string>('Practice for 15 minutes a day to maintain your streak!');
   const [loading, setLoading] = useState(true);
 
+  // Daily warmup popup modal state
+  const [isWarmupOpen, setIsWarmupOpen] = useState(false);
+  const [warmupDismissed, setWarmupDismissed] = useState(false);
+
   // Purchase modal
   const [selectedCourse, setSelectedCourse] = useState<CourseItem | null>(null);
   const [isPurchaseOpen, setIsPurchaseOpen] = useState(false);
 
-  const loadData = async () => {
+  const isFetchingRef = useRef(false);
+  const hasLoadedRef = useRef(false);
+  const hasPromptedWarmupRef = useRef(false);
+
+  const loadData = async (force = false) => {
+    if (isFetchingRef.current) return;
+    if (!force && hasLoadedRef.current) return;
+    isFetchingRef.current = true;
     setLoading(true);
     try {
       const [coursesData, quizzesData, leaderboardData, settingsData] = await Promise.allSettled([
@@ -63,18 +76,46 @@ export default function DashboardPage() {
       if (settingsData.status === 'fulfilled' && settingsData.value?.dailyTip) {
         setDailyTip(settingsData.value.dailyTip);
       }
+      hasLoadedRef.current = true;
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
+      isFetchingRef.current = false;
       setLoading(false);
     }
   };
 
+  const refreshLeaderboard = async () => {
+    try {
+      const res = await apiFetch<{ leaderboard: any[]; currentUserRank?: number }>('/api/leaderboard');
+      if (res.leaderboard) setLeaderboard(res.leaderboard);
+      if (res.currentUserRank) setUserRank(res.currentUserRank);
+    } catch (err) {
+      console.error('Failed to refresh leaderboard:', err);
+    }
+  };
+
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !hasLoadedRef.current) {
       loadData();
     }
   }, [isAuthenticated]);
+
+  // Prompt student with daily warmup popup upon login/opening if pending today
+  useEffect(() => {
+    if (
+      user?.role === 'STUDENT' &&
+      !warmupDismissed &&
+      !hasPromptedWarmupRef.current &&
+      user?.stats?.warmupCompletedToday === false
+    ) {
+      hasPromptedWarmupRef.current = true;
+      const timer = setTimeout(() => {
+        setIsWarmupOpen(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [user?.role, user?.stats?.warmupCompletedToday, warmupDismissed]);
 
   const handleOpenPurchase = (course: CourseItem) => {
     setSelectedCourse(course);
@@ -82,7 +123,7 @@ export default function DashboardPage() {
   };
 
   const handlePurchaseSuccess = async () => {
-    await loadData();
+    await loadData(true);
     await fetchProfile();
   };
 
@@ -354,7 +395,9 @@ export default function DashboardPage() {
           {/* Dynamic 30-Sec Daily Vocab Warmup */}
           <DailyWarmupCard
             initialCompleted={user?.stats?.warmupCompletedToday}
-            onCompleted={() => loadData()}
+            onCompleted={async () => {
+              await Promise.allSettled([refreshLeaderboard(), fetchProfile()]);
+            }}
           />
 
           {/* Leaderboard Preview */}
@@ -379,14 +422,25 @@ export default function DashboardPage() {
                   View All
                 </Link>
               </div>
-              <BadgeGrid unlockedBadges={user.badges} />
+              <BadgeGrid unlockedBadges={user.badges} compact={true} />
             </div>
           )}
         </div>
       </div>
 
-      {/* Course Purchase Modal */}
-      <PurchaseModal
+      <DailyWarmupModal
+        isOpen={isWarmupOpen}
+        onClose={() => {
+          setIsWarmupOpen(false);
+          setWarmupDismissed(true);
+        }}
+        onCompleted={async (_xpAwarded: number) => {
+          await Promise.allSettled([refreshLeaderboard(), fetchProfile()]);
+        }}
+      />
+
+      {/* Course Razorpay Checkout Simulator Modal */}
+      <RazorpaySimulatorModal
         course={selectedCourse}
         isOpen={isPurchaseOpen}
         onClose={() => setIsPurchaseOpen(false)}

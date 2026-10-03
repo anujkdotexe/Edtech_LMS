@@ -1,6 +1,5 @@
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
-import { serverEnv } from '../../config';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 import { eq } from 'drizzle-orm';
@@ -51,6 +50,7 @@ export class AdminService {
         id: s.id,
         name: s.name,
         email: s.email,
+        avatarUrl: s.avatarUrl,
         role: s.role,
         isActive: !s.isSuspended,
         isSuspended: s.isSuspended,
@@ -562,5 +562,18 @@ export class AdminService {
   static async deleteQuestion(id: string) {
     await AdminRepository.deleteQuestion(id);
     return { success: true };
+  }
+
+  static async getAllBadges() {
+    return await AdminRepository.getAllBadges();
+  }
+
+  static async updateBadge(id: string, updates: { name?: string; description?: string; icon?: string; criteriaType?: string; criteriaThreshold?: number }) {
+    const existing = await AdminRepository.getBadgeById(id);
+    if (!existing) {
+      throw new NotFoundError(`Badge with id '${id}' not found`);
+    }
+    const updated = await AdminRepository.updateBadge(id, updates);
+    return updated;
   }
 }

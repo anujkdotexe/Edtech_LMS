@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '../../../store/useAuthStore';
@@ -30,21 +30,8 @@ interface TestResult {
   testedAt: string | null;
 }
 
-export default function ApiHealthPage() {
-  const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
-  
-  // Guard access to only developers/admins
-  useEffect(() => {
-    if (isAuthenticated) {
-      if (user?.role !== 'DEVELOPER' && user?.role !== 'ADMIN' && !user?.impersonatedBy) {
-        router.push('/');
-      }
-    }
-  }, [isAuthenticated, user?.role, user?.impersonatedBy, router]);
-
-  // Registry of LMS API Endpoints
-  const endpoints: APIEndpoint[] = [
+// Registry of LMS API Endpoints (static constant declared at module level)
+const ENDPOINTS: APIEndpoint[] = [
     {
       id: 'health',
       method: 'GET',
@@ -206,21 +193,34 @@ export default function ApiHealthPage() {
     }
   ];
 
-  // States
-  const [results, setResults] = useState<Record<string, TestResult>>(() => {
-    const initial: Record<string, TestResult> = {};
-    endpoints.forEach(e => {
-      initial[e.id] = {
-        status: 'idle',
-        statusCode: null,
-        statusText: '',
-        latencyMs: null,
-        responsePreview: '',
-        testedAt: null
-      };
+  export default function ApiHealthPage() {
+    const router = useRouter();
+    const { user, isAuthenticated } = useAuthStore();
+    
+    // Guard access to only developers/admins
+    useEffect(() => {
+      if (isAuthenticated) {
+        if (user?.role !== 'DEVELOPER' && user?.role !== 'ADMIN' && !user?.impersonatedBy) {
+          router.push('/');
+        }
+      }
+    }, [isAuthenticated, user?.role, user?.impersonatedBy, router]);
+
+    // States
+    const [results, setResults] = useState<Record<string, TestResult>>(() => {
+      const initial: Record<string, TestResult> = {};
+      ENDPOINTS.forEach(e => {
+        initial[e.id] = {
+          status: 'idle',
+          statusCode: null,
+          statusText: '',
+          latencyMs: null,
+          responsePreview: '',
+          testedAt: null
+        };
+      });
+      return initial;
     });
-    return initial;
-  });
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -266,7 +266,7 @@ export default function ApiHealthPage() {
 
   // Filtered Endpoints
   const filteredEndpoints = useMemo(() => {
-    return endpoints.filter(e => {
+    return ENDPOINTS.filter(e => {
       const matchesSearch = e.path.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             e.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             e.method.toLowerCase().includes(searchTerm.toLowerCase());
@@ -279,7 +279,7 @@ export default function ApiHealthPage() {
   }, [searchTerm, selectedCategory, selectedAccess]);
 
   // Single Endpoint Ping Executor
-  const pingEndpoint = async (endpoint: APIEndpoint) => {
+  const pingEndpoint = useCallback(async (endpoint: APIEndpoint) => {
     setResults(prev => ({
       ...prev,
       [endpoint.id]: {
@@ -361,22 +361,22 @@ export default function ApiHealthPage() {
         }
       }));
     }
-  };
+  }, []);
 
   // Scan all listed endpoints
-  const scanAll = async () => {
+  const scanAll = useCallback(async () => {
     setIsScanning(true);
     // Ping public / system nodes first, then admin/dev nodes
-    for (const endpoint of endpoints) {
+    for (const endpoint of ENDPOINTS) {
       await pingEndpoint(endpoint);
     }
     setIsScanning(false);
-  };
+  }, [pingEndpoint]);
 
   // Run initial scan on load
   useEffect(() => {
     scanAll();
-  }, []);
+  }, [scanAll]);
 
   return (
     <div className="max-w-7xl mx-auto py-4 sm:py-8 space-y-8 animate-[fadeIn_0.4s_ease-out]">
@@ -531,7 +531,7 @@ export default function ApiHealthPage() {
           {/* Endpoints List */}
           <div className="space-y-4">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
-              Registered Endpoints ({filteredEndpoints.length} of {endpoints.length})
+              Registered Endpoints ({filteredEndpoints.length} of {ENDPOINTS.length})
             </h3>
 
             {filteredEndpoints.length === 0 ? (
@@ -671,7 +671,7 @@ export default function ApiHealthPage() {
 
             {/* Console Main Detail Pane */}
             {selectedEndpointId ? (() => {
-              const selectedEndpoint = endpoints.find(e => e.id === selectedEndpointId)!;
+              const selectedEndpoint = ENDPOINTS.find((e: APIEndpoint) => e.id === selectedEndpointId)!;
               const res = results[selectedEndpointId];
               
               return (

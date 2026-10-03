@@ -33,6 +33,7 @@ export const DailyWarmupCard: React.FC<DailyWarmupCardProps> = ({
   const [fetchError, setFetchError] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [earnedXp, setEarnedXp] = useState<number>(0);
 
   const fetchWarmup = async () => {
     setFetchingChallenge(true);
@@ -53,11 +54,12 @@ export const DailyWarmupCard: React.FC<DailyWarmupCardProps> = ({
 
   useEffect(() => {
     setCompleted(initialCompleted);
+    if (!initialCompleted) {
+      fetchWarmup();
+    } else {
+      setFetchingChallenge(false);
+    }
   }, [initialCompleted]);
-
-  useEffect(() => {
-    fetchWarmup();
-  }, []);
 
   useEffect(() => {
     if (completed || submitted || expired || fetchingChallenge) return;
@@ -95,11 +97,14 @@ export const DailyWarmupCard: React.FC<DailyWarmupCardProps> = ({
       });
 
       setCompleted(true);
-      setSuccessMsg(res.message || `Daily warmup completed! +${challenge.xpReward || 25} XP earned.`);
+      const xp = res.xpAwarded || challenge.xpReward || 25;
+      setEarnedXp(xp);
+      setSuccessMsg(res.message || `Daily warmup completed! +${xp} XP earned.`);
       if (onCompleted) {
-        onCompleted(res.xpAwarded || challenge.xpReward || 25);
+        onCompleted(xp);
+      } else {
+        await fetchProfile();
       }
-      await fetchProfile();
     } catch (err: any) {
       if (err.message?.toLowerCase().includes('already completed')) {
         setCompleted(true);
@@ -166,7 +171,7 @@ export const DailyWarmupCard: React.FC<DailyWarmupCardProps> = ({
           </div>
         </div>
         <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold shrink-0">
-          +25 XP
+          +{earnedXp || challenge?.xpReward || 25} XP
         </span>
       </div>
     );

@@ -31,4 +31,6 @@ export interface ModuleItem {
 export interface CourseDetail extends CourseCatalogItem {
   modules: ModuleItem[];
   progressPercent?: number;
+  totalLessonsCount?: number;
+  completedLessonsCount?: number;
 }

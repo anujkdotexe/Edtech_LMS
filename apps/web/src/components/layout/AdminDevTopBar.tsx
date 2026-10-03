@@ -17,6 +17,7 @@ import {
   CreditCard,
   Settings,
 } from 'lucide-react';
+import { Avatar } from '../ui/Avatar';
 
 interface AdminDevTopBarProps {
   isDev: boolean;
@@ -130,23 +131,13 @@ export const AdminDevTopBar: React.FC<AdminDevTopBarProps> = ({
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             aria-label="User Profile Menu"
             aria-expanded={isDropdownOpen}
-            className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-semibold overflow-hidden transition ${
+            className={`min-w-[44px] min-h-[44px] p-0.5 rounded-full border-2 flex items-center justify-center font-semibold overflow-hidden transition ${
               isDev
                 ? 'border-indigo-600/40 bg-slate-900 hover:border-indigo-500'
                 : 'border-slate-200 bg-slate-100 hover:border-slate-300'
             }`}
           >
-            {user?.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt="Avatar"
-                width="32"
-                height="32"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <User className={`w-4 h-4 ${isDev ? 'text-slate-400' : 'text-slate-500'}`} />
-            )}
+            <Avatar src={user?.avatarUrl} name={user?.name} size="sm" />
           </button>
 
           {isDropdownOpen && (

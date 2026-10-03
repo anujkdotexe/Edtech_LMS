@@ -126,7 +126,7 @@ export default function AdminPaymentsPage() {
                       <div className="text-[10px] text-slate-500">{payment.studentEmail}</div>
                     </td>
                     <td className="py-4 px-6 font-semibold text-slate-700">{payment.courseTitle}</td>
-                    <td className="py-4 px-6 font-black text-slate-800">${payment.amount}</td>
+                    <td className="py-4 px-6 font-black text-slate-800">₹{Number(payment.amount).toFixed(2)}</td>
                     <td className="py-4 px-6">
                       {payment.status === 'SUCCESS' ? (
                         <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200 uppercase flex items-center gap-1 w-max">

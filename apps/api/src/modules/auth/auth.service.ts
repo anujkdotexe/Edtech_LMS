@@ -6,6 +6,7 @@ import { serverEnv } from '../../config';
 import { UnauthorizedError, ForbiddenError, ValidationError } from '../../errors';
 import { UserAuthProfile } from './auth.types';
 import { emailService } from '../../common/email';
+import { calculateLevelStats } from '../../utils/xp';
 
 export class AuthService {
   static generateTokens(user: { id: string; role: UserRole }) {
@@ -54,6 +55,17 @@ export class AuthService {
       avatarUrl: newUser.avatarUrl,
       forcePasswordReset: newUser.forcePasswordReset,
       lastLoginAt: newUser.lastLoginAt,
+      stats: {
+        totalXp: 0,
+        level: 1,
+        xpInLevel: 0,
+        xpNeededForNextLevel: 250,
+        progressPercent: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        lastActiveDate: null,
+        warmupCompletedToday: false,
+      },
     };
 
     return { profile, tokens };
@@ -77,6 +89,9 @@ export class AuthService {
     await AuthRepository.updateLastLogin(user.id);
     const tokens = this.generateTokens(user);
 
+    const gamification = await AuthRepository.findUserWithGamification(user.id);
+    const levelStats = calculateLevelStats(gamification?.totalXp ?? 0);
+
     const profile: UserAuthProfile = {
       id: user.id,
       name: user.name,
@@ -85,6 +100,13 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       forcePasswordReset: user.forcePasswordReset,
       lastLoginAt: new Date(),
+      stats: {
+        ...levelStats,
+        currentStreak: gamification?.currentStreak ?? 0,
+        longestStreak: gamification?.longestStreak ?? 0,
+        lastActiveDate: gamification?.lastActiveDate ?? null,
+        warmupCompletedToday: gamification?.warmupCompletedToday ?? false,
+      },
     };
 
     return { profile, tokens };
@@ -156,25 +178,34 @@ export class AuthService {
   }
 
   static async getMe(userId: string) {
-    const user = await AuthRepository.findById(userId);
-    if (!user) {
+    const data = await AuthRepository.findUserWithGamification(userId);
+    if (!data || !data.user) {
       throw new UnauthorizedError('User not found');
     }
 
-    if (user.isSuspended) {
+    if (data.user.isSuspended) {
       throw new ForbiddenError('Account is suspended');
     }
 
-    await AuthRepository.updateLastLogin(user.id);
+    await AuthRepository.updateLastLogin(data.user.id);
+
+    const levelStats = calculateLevelStats(data.totalXp);
 
     const profile: UserAuthProfile = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      avatarUrl: user.avatarUrl,
-      forcePasswordReset: user.forcePasswordReset,
-      lastLoginAt: user.lastLoginAt,
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      role: data.user.role,
+      avatarUrl: data.user.avatarUrl,
+      forcePasswordReset: data.user.forcePasswordReset,
+      lastLoginAt: data.user.lastLoginAt,
+      stats: {
+        ...levelStats,
+        currentStreak: data.currentStreak,
+        longestStreak: data.longestStreak,
+        lastActiveDate: data.lastActiveDate,
+        warmupCompletedToday: data.warmupCompletedToday,
+      },
     };
 
     return profile;
@@ -204,6 +235,9 @@ export class AuthService {
     await AuthRepository.updateLastLogin(user.id);
     const tokens = this.generateTokens(user);
 
+    const gamification = await AuthRepository.findUserWithGamification(user.id);
+    const levelStats = calculateLevelStats(gamification?.totalXp ?? 0);
+
     const profile: UserAuthProfile = {
       id: user.id,
       name: user.name,
@@ -212,6 +246,13 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       forcePasswordReset: user.forcePasswordReset,
       lastLoginAt: user.lastLoginAt,
+      stats: {
+        ...levelStats,
+        currentStreak: gamification?.currentStreak ?? 0,
+        longestStreak: gamification?.longestStreak ?? 0,
+        lastActiveDate: gamification?.lastActiveDate ?? null,
+        warmupCompletedToday: gamification?.warmupCompletedToday ?? false,
+      },
     };
 
     return { profile, tokens };

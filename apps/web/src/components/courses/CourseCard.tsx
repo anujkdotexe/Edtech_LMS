@@ -48,7 +48,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onPurchaseClick 
           <div className="flex items-center gap-1.5">
             {course.isPremium ? (
               <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
-                ${course.price}
+                ₹{Number(course.price || 0).toFixed(2)}
               </span>
             ) : (
               <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
@@ -94,7 +94,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onPurchaseClick 
       <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
         {isAccessGranted ? (
           <Link href={`/courses/${course.id}`} className="w-full">
-            <Button variant="primary" size="sm" fullWidth>
+            <Button variant="primary" size="sm" fullWidth className="min-h-[44px]">
               <span>Continue Learning</span>
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -104,10 +104,11 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onPurchaseClick 
             variant="outline"
             size="sm"
             fullWidth
+            className="min-h-[44px]"
             onClick={() => onPurchaseClick && onPurchaseClick(course)}
           >
             <Lock className="w-3.5 h-3.5 text-amber-500" />
-            <span>Unlock for ${course.price}</span>
+            <span>Unlock for ₹{Number(course.price || 0).toFixed(2)}</span>
           </Button>
         )}
       </div>

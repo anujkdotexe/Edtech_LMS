@@ -5,21 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '../../store/useAuthStore';
 import { apiFetch } from '../../lib/api';
 import { Sparkles, Mail, Lock, User, UserPlus, LogIn, Check, Zap, AlertCircle } from 'lucide-react';
+import { LOCAL_AVATAR_PRESETS, generateLocalAvatarSvg } from '../../lib/avatar';
+import { Avatar } from '../../components/ui/Avatar';
 
-const AVATAR_OPTIONS = [
-  'https://api.dicebear.com/7.x/pixel-art/svg?seed=felix',
-  'https://api.dicebear.com/7.x/pixel-art/svg?seed=kitty',
-  'https://api.dicebear.com/7.x/pixel-art/svg?seed=buddy',
-  'https://api.dicebear.com/7.x/pixel-art/svg?seed=sparky',
-  'https://api.dicebear.com/7.x/pixel-art/svg?seed=pepper',
-  'https://api.dicebear.com/7.x/pixel-art/svg?seed=luna',
-  'https://api.dicebear.com/7.x/pixel-art/svg?seed=shadow',
-  'https://api.dicebear.com/7.x/pixel-art/svg?seed=rocky',
-  'https://api.dicebear.com/7.x/pixel-art/svg?seed=coco',
-  'https://api.dicebear.com/7.x/pixel-art/svg?seed=sunny',
-  'https://api.dicebear.com/7.x/pixel-art/svg?seed=daisy',
-  'https://api.dicebear.com/7.x/pixel-art/svg?seed=rusty'
-];
+const AVATAR_OPTIONS = LOCAL_AVATAR_PRESETS.map((p) => p.url);
 
 export default function LoginPage() {
   const router = useRouter();
@@ -263,7 +252,7 @@ export default function LoginPage() {
                     placeholder="Jean Dupont"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition font-medium font-sans"
+                    className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-base sm:text-xs focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition font-medium font-sans"
                     required
                   />
                 </div>
@@ -280,7 +269,7 @@ export default function LoginPage() {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition font-medium font-sans"
+                  className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-base sm:text-xs focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition font-medium font-sans"
                   required
                 />
               </div>
@@ -306,7 +295,7 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition font-medium font-sans"
+                    className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-base sm:text-xs focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition font-medium font-sans"
                     required
                   />
                 </div>
@@ -323,10 +312,9 @@ export default function LoginPage() {
                       key={i}
                       type="button"
                       onClick={() => setSelectedAvatar(url)}
-                      className={`aspect-square rounded-full border-2 overflow-hidden hover:scale-105 active:scale-95 transition relative ${selectedAvatar === url ? 'border-primary ring-2 ring-primary/15' : 'border-slate-100 opacity-80 hover:opacity-100'}`}
+                      className={`min-w-[44px] min-h-[44px] aspect-square rounded-full border-2 overflow-hidden hover:scale-105 active:scale-95 transition relative ${selectedAvatar === url ? 'border-primary ring-2 ring-primary/15' : 'border-slate-100 opacity-80 hover:opacity-100'}`}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt={`Avatar seed ${i+1}`} width="48" height="48" className="w-full h-full object-cover" />
+                      <Avatar src={url} size="sm" className="w-full h-full" />
                       {selectedAvatar === url && (
                         <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
                           <Check className="w-3.5 h-3.5 text-white drop-shadow" />

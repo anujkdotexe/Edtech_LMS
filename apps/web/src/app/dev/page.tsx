@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '../../lib/api';
@@ -103,17 +103,7 @@ export default function DevConsolePage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      if (user?.role !== 'DEVELOPER' && user?.role !== 'ADMIN' && !user?.impersonatedBy) {
-        router.push('/');
-        return;
-      }
-      loadDeveloperData();
-    }
-  }, [isAuthenticated, user?.role, user?.impersonatedBy]);
-
-  const loadDeveloperData = async () => {
+  const loadDeveloperData = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -144,9 +134,6 @@ export default function DevConsolePage() {
         const coursesRes = await apiFetch<any[]>('/api/courses');
         const mappedCourses = coursesRes.map((c) => ({ id: c.id, title: c.title }));
         setCourses(mappedCourses);
-        if (mappedCourses.length > 0 && overrideAction === 'REVOKE_COURSE') {
-          setOverrideValue(mappedCourses[0].id);
-        }
       } catch (_) {}
 
       // 2. Fetch Diagnostics
@@ -190,7 +177,17 @@ export default function DevConsolePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (user?.role !== 'DEVELOPER' && user?.role !== 'ADMIN' && !user?.impersonatedBy) {
+        router.push('/');
+        return;
+      }
+      loadDeveloperData();
+    }
+  }, [isAuthenticated, user?.role, user?.impersonatedBy, router, loadDeveloperData]);
 
   // 1. Switch session impersonation takeover
   const handleStartImpersonation = async (email: string) => {
@@ -648,12 +645,12 @@ export default function DevConsolePage() {
                 </div>
               </div>
 
-              {/* Advanced Logs (Mock) */}
+              {/* Real System Telemetry & Audit Logs */}
               {advancedLogs && (
                 <div className="space-y-6 pt-4 border-t border-slate-100">
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">
-                      Mock DB Query Log
+                      Database Audit &amp; Query Log
                     </h4>
                     <div className="bg-slate-900 border rounded-xl overflow-hidden p-3 font-mono text-[10px] text-emerald-400 space-y-1">
                       {advancedLogs.dbQueries.map((log, i) => (
@@ -668,7 +665,7 @@ export default function DevConsolePage() {
 
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">
-                      Mock Webhook Events
+                      Payment &amp; Ingestion Webhook Events
                     </h4>
                     <div className="bg-slate-900 border rounded-xl overflow-hidden p-3 font-mono text-[10px] text-blue-400 space-y-1">
                       {advancedLogs.webhooks.map((log, i) => (
@@ -684,7 +681,7 @@ export default function DevConsolePage() {
 
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">
-                      Mock Storage Engine Log
+                      Storage &amp; Asset Management Log
                     </h4>
                     <div className="bg-slate-900 border rounded-xl overflow-hidden p-3 font-mono text-[10px] text-purple-400 space-y-1">
                       {advancedLogs.storage.map((log, i) => (

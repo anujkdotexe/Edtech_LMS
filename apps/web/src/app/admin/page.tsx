@@ -8,6 +8,7 @@ import {
   Sparkles, CheckCircle2, RefreshCw, ShieldAlert, Settings, Award, Flame
 } from 'lucide-react';
 import Link from 'next/link';
+import { Avatar } from '../../components/ui/Avatar';
 
 interface Course {
   id: string;
@@ -142,7 +143,7 @@ export default function AdminDashboardPage() {
                   <CreditCard className="w-5 h-5 text-emerald-500" />
                 </div>
               </div>
-              <p className="text-3xl font-extrabold text-slate-800">${dashboardData.totalRevenue.toFixed(2)}</p>
+              <p className="text-3xl font-extrabold text-slate-800">₹{dashboardData.totalRevenue.toFixed(2)}</p>
               <p className="text-xs text-slate-400 font-medium mt-2">All-time processed revenue</p>
             </div>
 
@@ -259,12 +260,11 @@ export default function AdminDashboardPage() {
                   dashboardData.streakLeaders.map((leader, i) => (
                     <div key={i} className="flex items-center gap-3">
                       <div className="relative">
-                        <img
-                          src={leader.avatarUrl || '/avatars/default.svg'}
-                          alt={leader.name}
-                          width="40"
-                          height="40"
-                          className="w-10 h-10 rounded-full border-2 border-slate-100"
+                        <Avatar
+                          src={leader.avatarUrl}
+                          name={leader.name}
+                          size="md"
+                          className="border-2 border-slate-100"
                         />
                         <div className="absolute -top-2 -right-2 w-5 h-5 bg-amber-100 border border-amber-200 rounded-full flex items-center justify-center text-xs font-bold text-amber-800">
                           #{i + 1}
