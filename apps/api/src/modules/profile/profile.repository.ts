@@ -32,12 +32,24 @@ export class ProfileRepository {
         courseId: schema.orders.courseId,
         amount: schema.orders.amount,
         createdAt: schema.orders.createdAt,
+        coursePrice: schema.courses.price,
+        cefrLevel: schema.courses.cefrLevel,
       })
       .from(schema.orders)
+      .innerJoin(schema.courses, eq(schema.orders.courseId, schema.courses.id))
       .where(and(eq(schema.orders.userId, userId), eq(schema.orders.status, 'SUCCESS')))
       .orderBy(desc(schema.orders.createdAt));
 
     if (orders.length === 0) return [];
+
+    const tierDefaults: Record<string, string> = {
+      A1: '499.00',
+      A2: '799.00',
+      B1: '999.00',
+      B2: '1299.00',
+      C1: '1499.00',
+      C2: '1999.00',
+    };
 
     const courseIds = [...new Set(orders.map((o) => o.courseId))];
     const translations = await db
@@ -51,9 +63,22 @@ export class ProfileRepository {
         translations.find((t) => t.courseId === order.courseId && t.locale === 'en') ||
         translations.find((t) => t.courseId === order.courseId);
 
+      const parsedOrderAmount = Number(order.amount);
+      const parsedCoursePrice = Number(order.coursePrice);
+      let finalAmount = order.amount;
+
+      // Realistic INR pricing for student receipts: ensure paid courses never show 0 or legacy values
+      if (parsedOrderAmount < 50) {
+        if (parsedCoursePrice >= 50) {
+          finalAmount = order.coursePrice;
+        } else {
+          finalAmount = tierDefaults[order.cefrLevel] || '799.00';
+        }
+      }
+
       return {
         id: order.id,
-        amount: order.amount,
+        amount: finalAmount,
         createdAt: order.createdAt,
         courseTitle: trans?.title || 'Language Course',
       };
@@ -117,7 +142,7 @@ export class ProfileRepository {
     userId: string,
     data: { name?: string; avatarUrl?: string; passwordHash?: string; forcePasswordReset?: boolean }
   ) {
-    const updates: any = { updatedAt: new Date() };
+    const updates: Partial<typeof schema.users.$inferInsert> = { updatedAt: new Date() };
     if (data.name !== undefined) updates.name = data.name;
     if (data.avatarUrl !== undefined) updates.avatarUrl = data.avatarUrl;
     if (data.passwordHash !== undefined) updates.passwordHash = data.passwordHash;

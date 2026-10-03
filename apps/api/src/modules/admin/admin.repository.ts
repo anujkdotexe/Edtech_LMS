@@ -1,6 +1,7 @@
 import { eq, and, sql, desc, count, sum, avg, inArray } from 'drizzle-orm';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
+import { UpdateQuestionDto } from './admin.types';
 
 export class AdminRepository {
   // ─── Students ─────────────────────────────────────────────────────────────
@@ -14,12 +15,22 @@ export class AdminRepository {
     return user || null;
   }
 
+  static async findExistingEmails(emails: string[]): Promise<string[]> {
+    if (emails.length === 0) return [];
+    const existing = await db
+      .select({ email: schema.users.email })
+      .from(schema.users)
+      .where(inArray(schema.users.email, emails));
+    return existing.map((u) => u.email.toLowerCase());
+  }
+
   static async getStudentsWithDetails() {
     const students = await db
       .select({
         id: schema.users.id,
         name: schema.users.name,
         email: schema.users.email,
+        avatarUrl: schema.users.avatarUrl,
         role: schema.users.role,
         isSuspended: schema.users.isSuspended,
         createdAt: schema.users.createdAt,
@@ -264,7 +275,13 @@ export class AdminRepository {
       })
       .from(schema.orders)
       .innerJoin(schema.users, eq(schema.orders.userId, schema.users.id))
-      .innerJoin(schema.courseTranslations, eq(schema.orders.courseId, schema.courseTranslations.courseId))
+      .leftJoin(
+        schema.courseTranslations,
+        and(
+          eq(schema.orders.courseId, schema.courseTranslations.courseId),
+          eq(schema.courseTranslations.locale, 'en')
+        )
+      )
       .orderBy(desc(schema.orders.createdAt));
   }
 
@@ -650,11 +667,33 @@ export class AdminRepository {
     return newQuestion;
   }
 
-  static async updateQuestion(id: string, updates: any) {
+  static async updateQuestion(id: string, updates: UpdateQuestionDto) {
     await db.update(schema.quizQuestions).set(updates).where(eq(schema.quizQuestions.id, id));
   }
 
   static async deleteQuestion(id: string) {
     await db.delete(schema.quizQuestions).where(eq(schema.quizQuestions.id, id));
+  }
+
+  // ─── Badges Management ──────────────────────────────────────────────────
+  static async getAllBadges() {
+    return await db.select().from(schema.systemBadges);
+  }
+
+  static async getBadgeById(id: string) {
+    const rows = await db.select().from(schema.systemBadges).where(eq(schema.systemBadges.id, id)).limit(1);
+    return rows[0] || null;
+  }
+
+  static async updateBadge(id: string, updates: { name?: string; description?: string; icon?: string; criteriaType?: string; criteriaThreshold?: number }) {
+    const [updated] = await db
+      .update(schema.systemBadges)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.systemBadges.id, id))
+      .returning();
+    return updated || null;
   }
 }

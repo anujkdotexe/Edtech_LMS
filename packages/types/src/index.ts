@@ -1,4 +1,4 @@
-export type UserRole = 'STUDENT' | 'ADMIN' | 'DEVELOPER';
+export type UserRole = 'STUDENT' | 'INSTRUCTOR' | 'ADMIN' | 'DEVELOPER';
 
 export interface User {
   id: string;
@@ -30,4 +30,5 @@ export interface Course {
   price: number;
   isPremium: boolean;
   isPublished: boolean;
+  creatorId?: string | null;
 }

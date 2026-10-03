@@ -30,6 +30,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
     try {
       await apiFetch(`/api/courses/${course.id}/purchase`, {
         method: 'POST',
+        body: JSON.stringify({ simulatedStatus: 'SUCCESS' }),
       });
       setSuccess(true);
       setTimeout(() => {
@@ -50,7 +51,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
         <button
           onClick={onClose}
           aria-label="Close purchase modal"
-          className="absolute top-5 right-5 p-1 rounded-full text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition"
+          className="absolute top-4 right-4 min-w-[44px] min-h-[44px] flex items-center justify-center p-2 rounded-full text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition"
         >
           <X className="w-5 h-5" />
         </button>
@@ -80,7 +81,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-slate-500">Total Price</p>
-                  <p className="text-xl font-black text-slate-900">${course.price}</p>
+                  <p className="text-xl font-black text-slate-900">₹{Number(course.price || 0).toFixed(2)}</p>
                 </div>
               </div>
               <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
@@ -96,10 +97,10 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
             )}
 
             <div className="flex items-center gap-3 pt-2">
-              <Button variant="ghost" fullWidth onClick={onClose} disabled={loading}>
+              <Button variant="ghost" fullWidth onClick={onClose} disabled={loading} className="min-h-[44px]">
                 Cancel
               </Button>
-              <Button variant="primary" fullWidth onClick={handlePurchase} isLoading={loading}>
+              <Button variant="primary" fullWidth onClick={handlePurchase} isLoading={loading} className="min-h-[44px]">
                 Confirm &amp; Unlock
               </Button>
             </div>

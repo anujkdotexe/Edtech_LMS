@@ -90,7 +90,7 @@ export default function ResetPasswordPage() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="New Password"
-                className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm focus:border-primary outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base sm:text-sm focus:border-primary outline-none min-h-[44px]"
               />
               <input 
                 type="password"
@@ -99,12 +99,12 @@ export default function ResetPasswordPage() {
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="Confirm Password"
-                className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm focus:border-primary outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base sm:text-sm focus:border-primary outline-none min-h-[44px]"
               />
               <button 
                 type="submit"
                 disabled={loading || (!token && !isForced)}
-                className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-xl shadow-md transition active:scale-95 disabled:opacity-50"
+                className="w-full min-h-[44px] bg-primary hover:bg-primary-hover text-white font-bold py-3 rounded-xl shadow-md transition active:scale-95 disabled:opacity-50"
               >
                 {loading ? 'Resetting...' : 'Update Password'}
               </button>

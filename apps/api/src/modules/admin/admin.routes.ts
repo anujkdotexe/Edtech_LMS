@@ -54,4 +54,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
   fastify.post('/quizzes/:id/questions', { schema: schemas.adminCreateQuestionSchema }, AdminController.createQuestion);
   fastify.put('/questions/:id', { schema: schemas.adminUpdateQuestionSchema }, AdminController.updateQuestion);
   fastify.delete('/questions/:id', { schema: schemas.adminDeleteQuestionSchema }, AdminController.deleteQuestion);
+
+  // Badges Management
+  fastify.get('/badges', AdminController.getBadges);
+  fastify.put('/badges/:id', AdminController.updateBadge);
 }

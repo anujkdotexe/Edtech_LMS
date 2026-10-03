@@ -1,5 +1,8 @@
 import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
+import { db } from '../db';
+
+export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export interface SystemBadge {
   id: string;
@@ -31,7 +34,7 @@ export interface AwardedBadge {
 }
 
 export async function checkAndAwardBadges(
-  tx: any,
+  tx: DbTransaction,
   userId: string,
   context: BadgeEvaluationContext
 ): Promise<AwardedBadge[]> {
@@ -43,23 +46,32 @@ export async function checkAndAwardBadges(
   const unlockedBadgeIds = new Set<string>(existingBadges.map((b: { badgeId: string }) => b.badgeId));
   const newlyAwarded: AwardedBadge[] = [];
 
-  for (const badge of AVAILABLE_BADGES) {
+  const dbBadges = await tx.select().from(schema.systemBadges);
+  const badgesToEvaluate = dbBadges.length > 0 ? dbBadges : AVAILABLE_BADGES.map((b) => ({
+    id: b.id,
+    name: b.name,
+    description: b.description,
+    icon: 'Award',
+    criteriaType: 'ACTION',
+    criteriaThreshold: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }));
+
+  for (const badge of badgesToEvaluate) {
     if (unlockedBadgeIds.has(badge.id)) continue;
 
     let qualifies = false;
-    if (badge.id === 'streak_3' && (context.streak ?? 0) >= 3) {
+    const cType = (badge.criteriaType || '').toUpperCase();
+    const threshold = badge.criteriaThreshold ?? 1;
+
+    if (cType === 'STREAK' && (context.streak ?? 0) >= threshold) {
       qualifies = true;
-    } else if (badge.id === 'streak_7' && (context.streak ?? 0) >= 7) {
+    } else if (cType === 'SCORE' && (context.score ?? 0) >= threshold) {
       qualifies = true;
-    } else if (badge.id === 'centurion_streak' && (context.streak ?? 0) >= 30) {
+    } else if (cType === 'LEVEL' && (context.newLevel ?? 1) >= threshold) {
       qualifies = true;
-    } else if (badge.id === 'quiz_master' && (context.score ?? 0) >= 100) {
-      qualifies = true;
-    } else if (badge.id === 'level_5' && (context.newLevel ?? 1) >= 5) {
-      qualifies = true;
-    } else if (badge.id === 'level_10' && (context.newLevel ?? 1) >= 10) {
-      qualifies = true;
-    } else if (badge.id === 'scholar_1' && context.action === 'warmup_or_first_lesson') {
+    } else if ((cType === 'ACTION' || badge.id === 'scholar_1') && context.action === 'warmup_or_first_lesson') {
       qualifies = true;
     }
 

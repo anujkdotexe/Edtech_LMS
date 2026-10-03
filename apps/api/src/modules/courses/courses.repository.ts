@@ -192,11 +192,13 @@ export class CoursesRepository {
     locale: string;
     title: string;
     description: string;
+    creatorId?: string | null;
   }) {
     return await db.transaction(async (tx) => {
       const [newCourse] = await tx
         .insert(schema.courses)
         .values({
+          creatorId: courseData.creatorId,
           cefrLevel: courseData.cefrLevel,
           price: courseData.price,
           isPremium: courseData.isPremium,

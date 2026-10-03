@@ -5,7 +5,7 @@ import { apiFetch } from '../../lib/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { BookOpen, Search, Sparkles, AlertCircle } from 'lucide-react';
 import { CourseCard, CourseItem } from '../../components/courses/CourseCard';
-import { PurchaseModal } from '../../components/courses/PurchaseModal';
+import { RazorpaySimulatorModal } from '../../components/courses/RazorpaySimulatorModal';
 
 export default function CoursesCatalogPage() {
   const { isAuthenticated, fetchProfile } = useAuthStore();
@@ -134,12 +134,27 @@ export default function CoursesCatalogPage() {
           </button>
         </div>
       ) : filteredCourses.length === 0 ? (
-        <div className="bg-slate-50 border border-slate-200/80 p-12 rounded-2xl text-center space-y-3 max-w-md mx-auto">
-          <Search className="w-12 h-12 text-slate-300 mx-auto" />
-          <h3 className="font-bold text-slate-700 text-lg">No syllabi found</h3>
-          <p className="text-xs text-slate-400">
-            No courses match the criteria. Adjust filters or search strings.
-          </p>
+        <div className="bg-white border border-slate-200/80 p-10 sm:p-12 rounded-2xl text-center space-y-4 max-w-md mx-auto shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-primary">
+            <Search className="w-7 h-7" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-bold text-slate-800 text-lg">No syllabi found</h3>
+            <p className="text-xs text-slate-500">
+              No courses match your active search or CEFR level filters.
+            </p>
+          </div>
+          {(searchQuery || selectedCefr !== 'ALL') && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedCefr('ALL');
+              }}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
+            >
+              Reset All Filters
+            </button>
+          )}
         </div>
       ) : (
         /* Courses Grid Using Reusable CourseCard */
@@ -154,8 +169,8 @@ export default function CoursesCatalogPage() {
         </div>
       )}
 
-      {/* Reusable Course Purchase Modal */}
-      <PurchaseModal
+      {/* Reusable Razorpay Simulator Modal */}
+      <RazorpaySimulatorModal
         course={selectedCourse}
         isOpen={isPurchaseOpen}
         onClose={() => setIsPurchaseOpen(false)}

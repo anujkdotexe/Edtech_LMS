@@ -283,9 +283,9 @@ export default function QuizArenaPage({ params }: { params?: { id?: string } }) 
                   <button
                     key={opt.key}
                     onClick={() => handleSelectOption(activeQuestion.id, opt.key)}
-                    className={`w-full text-left p-4 rounded-xl border text-sm font-semibold transition active:scale-[0.99] flex items-center gap-3 ${isSelected ? 'bg-primary text-white border-primary shadow-md' : 'bg-slate-50 border-slate-200/80 text-slate-700 hover:bg-slate-100/50'}`}
+                    className={`w-full min-h-[48px] text-left p-4 rounded-xl border text-sm font-semibold transition active:scale-[0.99] flex items-center gap-3 ${isSelected ? 'bg-primary text-white border-primary shadow-md' : 'bg-slate-50 border-slate-200/80 text-slate-700 hover:bg-slate-100/50'}`}
                   >
-                    <span className={`w-6 h-6 rounded-full border flex items-center justify-center font-bold text-xs shrink-0 ${isSelected ? 'bg-white/20 border-white/20 text-white' : 'bg-white border-slate-200 text-slate-500 shadow-sm'}`}>
+                    <span className={`w-7 h-7 rounded-full border flex items-center justify-center font-bold text-xs shrink-0 ${isSelected ? 'bg-white/20 border-white/20 text-white' : 'bg-white border-slate-200 text-slate-500 shadow-sm'}`}>
                       {opt.key}
                     </span>
                     <span className="truncate">{opt.label}</span>
@@ -296,11 +296,11 @@ export default function QuizArenaPage({ params }: { params?: { id?: string } }) 
           </div>
 
           {/* Navigation Controls */}
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-3">
             <button
               onClick={handlePrev}
               disabled={currentIndex === 0}
-              className="btn-secondary text-xs font-bold py-2.5 px-4 flex items-center gap-1 disabled:opacity-30"
+              className="btn-secondary min-h-[44px] text-xs font-bold py-2.5 px-4 flex items-center gap-1 disabled:opacity-30"
             >
               <ChevronLeft className="w-4 h-4" /> Previous
             </button>
@@ -309,7 +309,7 @@ export default function QuizArenaPage({ params }: { params?: { id?: string } }) 
               <button
                 onClick={handleNext}
                 disabled={!activeSelected}
-                className="btn-primary text-xs font-bold py-2.5 px-5 flex items-center gap-1"
+                className="btn-primary min-h-[44px] text-xs font-bold py-2.5 px-5 flex items-center gap-1"
               >
                 Next Question <ChevronRight className="w-4 h-4" />
               </button>
@@ -317,7 +317,7 @@ export default function QuizArenaPage({ params }: { params?: { id?: string } }) 
               <button
                 onClick={handleSubmitQuiz}
                 disabled={!activeSelected || submitting}
-                className="btn-accent text-xs font-extrabold py-3 px-6 flex items-center gap-1.5 shadow-md fill-slate-900"
+                className="btn-accent min-h-[44px] text-xs font-extrabold py-3 px-6 flex items-center gap-1.5 shadow-md fill-slate-900"
               >
                 {submitting ? (
                   <div className="w-4 h-4 rounded-full border-2 border-slate-950 border-t-transparent animate-spin"></div>

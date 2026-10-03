@@ -5,7 +5,7 @@ import { serverEnv } from '../../config';
 import { NotFoundError } from '../../errors';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, count, sql } from 'drizzle-orm';
 import { SystemHealthDto } from './dev.types';
 
 export class DevService {
@@ -137,14 +137,33 @@ export class DevService {
   }
 
   static async getReconciliationReport() {
-    const allOrders = await db.select().from(schema.orders);
+    const statusAggregates = await db
+      .select({
+        status: schema.orders.status,
+        orderCount: count(),
+        totalAmount: sql<string>`coalesce(sum(${schema.orders.amount}), 0)`,
+      })
+      .from(schema.orders)
+      .groupBy(schema.orders.status);
 
-    const successOrders = allOrders.filter((o) => o.status === 'SUCCESS');
-    const failedOrders = allOrders.filter((o) => o.status === 'FAILED');
-    const refundedOrders = allOrders.filter((o) => o.status === 'REFUNDED');
-    const pendingOrders = allOrders.filter((o) => o.status === 'PENDING');
+    const counts: Record<string, number> = {
+      SUCCESS: 0,
+      FAILED: 0,
+      REFUNDED: 0,
+      PENDING: 0,
+    };
+    let dbTotalRevenue = 0;
+    let totalOrders = 0;
 
-    const dbTotalRevenue = successOrders.reduce((sum, o) => sum + Number(o.amount || 0), 0);
+    for (const row of statusAggregates) {
+      const c = Number(row.orderCount) || 0;
+      counts[row.status] = c;
+      totalOrders += c;
+      if (row.status === 'SUCCESS') {
+        dbTotalRevenue = Number(row.totalAmount) || 0;
+      }
+    }
+
     const hasGateway = Boolean(process.env.STRIPE_SECRET_KEY);
 
     let reconciliationStatus: 'RECONCILED' | 'VARIANCE_DETECTED' | 'GATEWAY_UNAVAILABLE';
@@ -172,11 +191,11 @@ export class DevService {
       reconciliationStatus,
       message,
       summary: {
-        totalOrders: allOrders.length,
-        successCount: successOrders.length,
-        failedCount: failedOrders.length,
-        refundedCount: refundedOrders.length,
-        pendingCount: pendingOrders.length,
+        totalOrders,
+        successCount: counts.SUCCESS || 0,
+        failedCount: counts.FAILED || 0,
+        refundedCount: counts.REFUNDED || 0,
+        pendingCount: counts.PENDING || 0,
       },
       revenue: {
         dbTotalRevenue: Math.round(dbTotalRevenue * 100) / 100,

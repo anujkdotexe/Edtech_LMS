@@ -35,12 +35,14 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
   useEffect(() => {
     const isPublicRoute = pathname === '/login' || pathname.startsWith('/reset-password');
-    checkSession().then((me) => {
-      if (me && !isPublicRoute) {
-        fetchProfile();
-      }
-    });
-  }, [checkSession, fetchProfile, pathname]);
+    if (!isAuthenticated) {
+      checkSession().then((me) => {
+        if (me && !isPublicRoute) {
+          fetchProfile();
+        }
+      });
+    }
+  }, [checkSession, fetchProfile, isAuthenticated, pathname]);
 
   // Auth & Client-side Route Guard
   useEffect(() => {
@@ -162,29 +164,34 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         <>
           {isAuthenticated && pathname !== '/login' && <Navbar />}
 
-          {/* Student Mobile Sub-Nav */}
-          {isAuthenticated && pathname !== '/login' && !isAdminOrDev && (
-            <nav aria-label="Mobile Navigation" className="md:hidden sticky top-14 w-full bg-white border-b border-slate-100 flex justify-around py-2 z-30 text-slate-500 font-semibold text-xs shadow-sm">
-              {studentNavLinks.map((link) => (
-                <Link
-                  key={link.path}
-                  href={link.path}
-                  className={`flex flex-col items-center gap-0.5 px-4 py-1 ${
-                    pathname === link.path ? 'text-primary' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {link.icon}
-                  <span>{link.name}</span>
-                </Link>
-              ))}
-            </nav>
-          )}
-
-          <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8">
             {children}
           </main>
 
-          <footer className="bg-white border-t border-slate-100 py-6 text-center text-slate-600 text-xs">
+          {/* Modern Student Mobile Bottom Navigation Bar */}
+          {isAuthenticated && pathname !== '/login' && !isAdminOrDev && (
+            <nav aria-label="Mobile Navigation" className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/80 flex justify-around items-center py-2 z-40 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+              {studentNavLinks.map((link) => {
+                const active = pathname === link.path;
+                return (
+                  <Link
+                    key={link.path}
+                    href={link.path}
+                    className={`flex flex-col items-center justify-center min-w-[48px] min-h-[48px] px-3 py-1 text-xs font-semibold transition active:scale-95 ${
+                      active ? 'text-primary font-bold' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <span className={active ? 'text-primary' : 'text-slate-400'}>
+                      {link.icon}
+                    </span>
+                    <span className="text-[11px] leading-none">{link.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
+
+          <footer className="bg-white border-t border-slate-100 py-6 text-center text-slate-600 text-xs mb-14 md:mb-0">
             <p>&copy; 2026 Antigravity LMS &bull; Clean MVC &amp; Microlithic Architecture</p>
           </footer>
         </>

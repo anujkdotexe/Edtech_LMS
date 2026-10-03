@@ -30,11 +30,21 @@ export interface SendMessageDto {
   message: string;
 }
 
+export interface EmailTemplateConfig {
+  subject: string;
+  body: string;
+}
+
 export interface SiteSettings {
   activeBanner: string;
   bannerEnabled: boolean;
   maintenanceMode: boolean;
   dailyTip: string;
+  emailTemplates: {
+    welcome: EmailTemplateConfig;
+    passwordReset: EmailTemplateConfig;
+    courseEnrolled: EmailTemplateConfig;
+  };
 }
 
 export interface UpdateSiteSettingsDto {
@@ -42,6 +52,11 @@ export interface UpdateSiteSettingsDto {
   bannerEnabled?: boolean;
   maintenanceMode?: boolean;
   dailyTip?: string;
+  emailTemplates?: {
+    welcome?: Partial<EmailTemplateConfig>;
+    passwordReset?: Partial<EmailTemplateConfig>;
+    courseEnrolled?: Partial<EmailTemplateConfig>;
+  };
 }
 
 export interface CreateModuleDto {

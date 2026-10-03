@@ -1,18 +1,21 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { apiFetch } from '../../../lib/api';
 import { 
   Users, AlertCircle, ArrowLeft, RefreshCw, Slash, Trash2, 
-  Download, BookOpen, Plus, X, ShieldAlert, ShieldCheck 
+  Download, BookOpen, Plus, X, ShieldAlert, ShieldCheck,
+  Search, ChevronLeft, ChevronRight
 } from 'lucide-react';
+import { Avatar } from '../../../components/ui/Avatar';
 
 interface Student {
   id: string;
   name: string;
   email: string;
+  avatarUrl?: string | null;
   role: string;
   isSuspended: boolean;
   createdAt: string;
@@ -30,6 +33,12 @@ export default function AdminStudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Search & Filtering & Pagination
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   
   // Manual enrollment modal state
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
@@ -263,6 +272,24 @@ export default function AdminStudentsPage() {
     }
   };
 
+  const filteredStudents = useMemo(() => {
+    return students.filter((s) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch = !q || s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q);
+      const matchesStatus =
+        statusFilter === 'ALL' ||
+        (statusFilter === 'ACTIVE' && !s.isSuspended) ||
+        (statusFilter === 'SUSPENDED' && s.isSuspended);
+      return matchesSearch && matchesStatus;
+    });
+  }, [students, searchQuery, statusFilter]);
+
+  const totalPages = Math.ceil(filteredStudents.length / pageSize) || 1;
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredStudents.slice(start, start + pageSize);
+  }, [filteredStudents, currentPage, pageSize]);
+
   if (!isAuthenticated || !['ADMIN', 'DEVELOPER'].includes(user?.role || '')) {
     return <div className="p-8 text-center text-red-500 font-bold">Unauthorized</div>;
   }
@@ -298,6 +325,42 @@ export default function AdminStudentsPage() {
         </div>
       </div>
 
+      {/* Search & Filter Bar */}
+      <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Search students by name or email..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-primary transition"
+          />
+        </div>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="text-xs text-slate-500 font-semibold">Filter:</span>
+          {(['ALL', 'ACTIVE', 'SUSPENDED'] as const).map((status) => (
+            <button
+              key={status}
+              onClick={() => {
+                setStatusFilter(status);
+                setCurrentPage(1);
+              }}
+              className={`text-xs font-bold px-3 py-1.5 rounded-xl transition ${
+                statusFilter === status
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Bulk Actions Indicator Bar */}
       {selectedIds.length > 0 && (
         <div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-premium flex items-center justify-between animate-[slideIn_0.3s_ease-out]">
@@ -317,8 +380,8 @@ export default function AdminStudentsPage() {
       <div className="bg-white border border-slate-100 rounded-3xl shadow-premium overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-slate-500">Loading Students...</div>
-        ) : students.length === 0 ? (
-          <div className="p-12 text-center text-slate-500">No students found.</div>
+        ) : filteredStudents.length === 0 ? (
+          <div className="p-12 text-center text-slate-500">No students match your search/filter criteria.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
@@ -327,7 +390,7 @@ export default function AdminStudentsPage() {
                   <th className="py-4 px-6 w-12">
                     <input
                       type="checkbox"
-                      checked={students.length > 0 && selectedIds.length === students.length}
+                      checked={paginatedStudents.length > 0 && paginatedStudents.every(s => selectedIds.includes(s.id))}
                       onChange={toggleSelectAll}
                       className="w-4 h-4 rounded text-primary border-slate-300 focus:ring-primary cursor-pointer"
                     />
@@ -340,7 +403,7 @@ export default function AdminStudentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {students.map((student) => (
+                {paginatedStudents.map((student) => (
                   <tr key={student.id} className={`transition ${selectedIds.includes(student.id) ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-slate-50/50'}`}>
                     <td className="py-4 px-6 w-12">
                       <input
@@ -350,7 +413,12 @@ export default function AdminStudentsPage() {
                         className="w-4 h-4 rounded text-primary border-slate-300 focus:ring-primary cursor-pointer"
                       />
                     </td>
-                    <td className="py-4 px-6 font-bold text-slate-800">{student.name}</td>
+                    <td className="py-4 px-6 font-bold text-slate-800">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar src={student.avatarUrl} name={student.name} size="sm" />
+                        <span>{student.name}</span>
+                      </div>
+                    </td>
                     <td className="py-4 px-6 text-slate-500">{student.email}</td>
                     <td className="py-4 px-6">
                       {student.isSuspended ? (
@@ -424,6 +492,38 @@ export default function AdminStudentsPage() {
             </table>
           </div>
         )}
+
+        {/* Pagination Bar */}
+        {!loading && filteredStudents.length > 0 && (
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+            <span>
+              Showing <strong className="text-slate-800">{(currentPage - 1) * pageSize + 1}</strong> to{' '}
+              <strong className="text-slate-800">{Math.min(currentPage * pageSize, filteredStudents.length)}</strong> of{' '}
+              <strong className="text-slate-800">{filteredStudents.length}</strong> students
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="font-semibold text-xs px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                aria-label="Next page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Manual Enrollment Modal */}
@@ -452,7 +552,7 @@ export default function AdminStudentsPage() {
                 >
                   <option value="">-- Choose Course --</option>
                   {courses.map((course) => (
-                    <option key={course.id} value={course.id}>[{course.cefrLevel}] {course.title} - ${course.price}</option>
+                    <option key={course.id} value={course.id}>[{course.cefrLevel}] {course.title} - ₹{Number(course.price).toFixed(2)}</option>
                   ))}
                 </select>
               </div>
@@ -543,7 +643,7 @@ export default function AdminStudentsPage() {
                 >
                   <option value="">-- Select Course --</option>
                   {courses.map((course) => (
-                    <option key={course.id} value={course.id}>[{course.cefrLevel}] {course.title} - ${course.price}</option>
+                    <option key={course.id} value={course.id}>[{course.cefrLevel}] {course.title} - ₹{Number(course.price).toFixed(2)}</option>
                   ))}
                 </select>
               </div>

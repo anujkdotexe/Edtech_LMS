@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { UserRole } from '@lms/types';
 import { apiFetch } from '../lib/api';
 
 export interface UserStats {
@@ -44,7 +45,7 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  role: 'STUDENT' | 'ADMIN' | 'DEVELOPER';
+  role: UserRole;
   avatarUrl: string | null;
   forcePasswordReset?: boolean;
   impersonatedBy?: string;
@@ -60,10 +61,32 @@ export interface UserAuthProfile {
   id: string;
   name: string;
   email: string;
-  role: 'STUDENT' | 'ADMIN' | 'DEVELOPER';
+  role: UserRole;
   avatarUrl: string | null;
   forcePasswordReset?: boolean;
   lastLoginAt?: string | null;
+  stats?: UserStats;
+}
+
+export function makeEmptyProfile(base: UserAuthProfile): UserProfile {
+  return {
+    ...base,
+    stats: base.stats || {
+      totalXp: 0,
+      level: 1,
+      xpInLevel: 0,
+      xpNeededForNextLevel: 250,
+      progressPercent: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      lastActiveDate: null,
+      warmupCompletedToday: false,
+    },
+    badges: [],
+    activityFeed: [],
+    purchaseHistory: [],
+    quizHistory: [],
+  };
 }
 
 interface AuthState {
@@ -95,25 +118,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const me = await apiFetch<UserAuthProfile>('/api/auth/me');
       set((state) => ({
         user: state.user
-          ? { ...state.user, ...me }
-          : ({
+          ? {
+              ...state.user,
               ...me,
-              stats: {
-                totalXp: 0,
-                level: 1,
-                xpInLevel: 0,
-                xpNeededForNextLevel: 250,
-                progressPercent: 0,
-                currentStreak: 0,
-                longestStreak: 0,
-                lastActiveDate: null,
-                warmupCompletedToday: false,
-              },
-              badges: [],
-              activityFeed: [],
-              purchaseHistory: [],
-              quizHistory: [],
-            } as UserProfile),
+              stats: me.stats ? { ...state.user.stats, ...me.stats } : state.user.stats,
+            }
+          : makeEmptyProfile(me),
         isAuthenticated: true,
         isLoading: false,
       }));
@@ -125,13 +135,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   fetchProfile: async () => {
-    set({ isLoading: true, error: null });
     try {
       const user = await apiFetch<UserProfile>('/api/profile');
       set({ user, isAuthenticated: true, isLoading: false });
       return user;
     } catch {
-      set({ user: null, isAuthenticated: false, isLoading: false });
+      if (!get().user) {
+        set({ user: null, isAuthenticated: false, isLoading: false });
+      }
       return null;
     }
   },
@@ -149,24 +160,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ user: fullProfile, isAuthenticated: true, isLoading: false });
       } catch {
         set({
-          user: {
-            ...authProfile,
-            stats: {
-              totalXp: 0,
-              level: 1,
-              xpInLevel: 0,
-              xpNeededForNextLevel: 250,
-              progressPercent: 0,
-              currentStreak: 0,
-              longestStreak: 0,
-              lastActiveDate: null,
-              warmupCompletedToday: false,
-            },
-            badges: [],
-            activityFeed: [],
-            purchaseHistory: [],
-            quizHistory: [],
-          },
+          user: makeEmptyProfile(authProfile),
           isAuthenticated: true,
           isLoading: false,
         });
@@ -190,24 +184,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ user: fullProfile, isAuthenticated: true, isLoading: false });
       } catch {
         set({
-          user: {
-            ...authProfile,
-            stats: {
-              totalXp: 0,
-              level: 1,
-              xpInLevel: 0,
-              xpNeededForNextLevel: 250,
-              progressPercent: 0,
-              currentStreak: 0,
-              longestStreak: 0,
-              lastActiveDate: null,
-              warmupCompletedToday: false,
-            },
-            badges: [],
-            activityFeed: [],
-            purchaseHistory: [],
-            quizHistory: [],
-          },
+          user: makeEmptyProfile(authProfile),
           isAuthenticated: true,
           isLoading: false,
         });
@@ -231,24 +208,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ user: fullProfile, isAuthenticated: true, isLoading: false });
       } catch {
         set({
-          user: {
-            ...authProfile,
-            stats: {
-              totalXp: 0,
-              level: 1,
-              xpInLevel: 0,
-              xpNeededForNextLevel: 250,
-              progressPercent: 0,
-              currentStreak: 0,
-              longestStreak: 0,
-              lastActiveDate: null,
-              warmupCompletedToday: false,
-            },
-            badges: [],
-            activityFeed: [],
-            purchaseHistory: [],
-            quizHistory: [],
-          },
+          user: makeEmptyProfile(authProfile),
           isAuthenticated: true,
           isLoading: false,
         });

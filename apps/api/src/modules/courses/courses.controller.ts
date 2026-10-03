@@ -86,7 +86,9 @@ export class CoursesController {
     }
 
     const { id } = request.params as { id: string };
-    const { simulatedStatus } = (request.body as { simulatedStatus?: 'SUCCESS' | 'FAILED' }) || {};
+    // Default to SUCCESS when body is empty or simulatedStatus not provided
+    const body = (request.body as { simulatedStatus?: 'SUCCESS' | 'FAILED' }) || {};
+    const simulatedStatus: 'SUCCESS' | 'FAILED' = body.simulatedStatus || 'SUCCESS';
 
     try {
       const result = await CoursesService.purchaseCourse(

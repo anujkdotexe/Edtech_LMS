@@ -1,13 +1,10 @@
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
-import { pipeline } from 'stream/promises';
 import bcrypt from 'bcrypt';
-import { serverEnv } from '../../config';
 import { db } from '../../db';
 import * as schema from '../../db/schema';
 import { eq } from 'drizzle-orm';
-import { NotFoundError } from '../../errors';
+import { NotFoundError, ValidationError } from '../../errors';
+import { storageService } from '../../common/storage';
 import { AdminRepository } from './admin.repository';
 import {
   StudentFilters,
@@ -31,6 +28,12 @@ const SITE_SETTINGS_DEFAULTS: Record<string, string> = {
   bannerEnabled: 'true',
   maintenanceMode: 'false',
   dailyTip: 'Practice for 15 minutes a day to maintain your streak!',
+  emailTemplate_welcome_subject: 'Welcome to Antigravity LMS!',
+  emailTemplate_welcome_body: 'Welcome to Antigravity LMS! Start your language learning journey today.',
+  emailTemplate_passwordReset_subject: 'Reset your password - Antigravity LMS',
+  emailTemplate_passwordReset_body: 'Please use the link below to reset your password. The link expires in 15 minutes: {{resetLink}}',
+  emailTemplate_courseEnrolled_subject: 'You are enrolled in {{courseTitle}}!',
+  emailTemplate_courseEnrolled_body: 'Congratulations! You have been successfully enrolled in {{courseTitle}}. Jump in and start practicing!',
 };
 
 export class AdminService {
@@ -47,6 +50,7 @@ export class AdminService {
         id: s.id,
         name: s.name,
         email: s.email,
+        avatarUrl: s.avatarUrl,
         role: s.role,
         isActive: !s.isSuspended,
         isSuspended: s.isSuspended,
@@ -81,7 +85,7 @@ export class AdminService {
   static async addStudent(dto: CreateStudentDto, adminUserId: string) {
     const existing = await AdminRepository.findUserByEmail(dto.email);
     if (existing) {
-      throw new Error('EMAIL_EXISTS');
+      throw new ValidationError('A student with this email already exists');
     }
 
     const tempPassword = dto.password || crypto.randomBytes(4).toString('hex') + 'A1!';
@@ -120,7 +124,7 @@ export class AdminService {
 
     const [course] = await db.select().from(schema.courses).where(eq(schema.courses.id, dto.courseId)).limit(1);
     if (!course) {
-      throw new Error('COURSE_NOT_FOUND');
+      throw new NotFoundError('Course not found');
     }
 
     const coursePrice = String(course.price || 0);
@@ -131,7 +135,7 @@ export class AdminService {
   static async revokeCourse(dto: RevokeCourseDto, adminUserId: string) {
     const studentId = dto.studentId || dto.userId;
     if (!studentId) {
-      throw new Error('STUDENT_NOT_FOUND');
+      throw new NotFoundError('Student not found');
     }
     const count = await AdminRepository.revokeCourseAccess(studentId, dto.courseId, adminUserId);
     return { count };
@@ -140,11 +144,11 @@ export class AdminService {
   static async sendMessage(dto: SendMessageDto, adminUserId: string) {
     const studentId = dto.studentId || dto.userId;
     if (!studentId) {
-      throw new Error('STUDENT_NOT_FOUND');
+      throw new NotFoundError('Student not found');
     }
     const student = await AdminRepository.findStudentById(studentId);
     if (!student) {
-      throw new Error('STUDENT_NOT_FOUND');
+      throw new NotFoundError('Student account not found');
     }
 
     await AdminRepository.logAdminMessage(studentId, dto.subject, adminUserId);
@@ -173,7 +177,7 @@ export class AdminService {
   static async suspendStudent(id: string, adminUserId: string) {
     const student = await AdminRepository.findStudentById(id);
     if (!student) {
-      throw new Error('STUDENT_NOT_FOUND');
+      throw new NotFoundError('Student account not found');
     }
 
     const newSuspendedState = !student.isSuspended;
@@ -184,7 +188,7 @@ export class AdminService {
   static async resetStudentPassword(id: string, adminUserId: string) {
     const student = await AdminRepository.findStudentById(id);
     if (!student) {
-      throw new Error('STUDENT_NOT_FOUND');
+      throw new NotFoundError('Student account not found');
     }
 
     const tempPassword = crypto.randomBytes(4).toString('hex') + 'A1!';
@@ -199,7 +203,7 @@ export class AdminService {
   static async deleteStudent(id: string, adminUserId: string) {
     const student = await AdminRepository.findStudentById(id);
     if (!student) {
-      throw new Error('STUDENT_NOT_FOUND');
+      throw new NotFoundError('Student account not found');
     }
 
     await AdminRepository.deleteStudentTx(id, adminUserId);
@@ -209,7 +213,7 @@ export class AdminService {
   static async enrollStudent(studentId: string, courseId: string, adminUserId: string) {
     const [course] = await db.select().from(schema.courses).where(eq(schema.courses.id, courseId)).limit(1);
     if (!course) {
-      throw new Error('COURSE_NOT_FOUND');
+      throw new NotFoundError('Course not found');
     }
 
     const result = await AdminRepository.enrollStudent(studentId, courseId, String(course.price || 0), adminUserId);
@@ -225,10 +229,31 @@ export class AdminService {
     let importedCount = 0;
     const printedCredentials: Array<{ email: string; tempPass: string }> = [];
 
-    for (const student of studentsList) {
-      const existing = await AdminRepository.findUserByEmail(student.email);
-      if (existing) continue;
+    const normalizedList = studentsList
+      .map((s) => ({
+        name: s.name?.trim() || '',
+        email: s.email?.trim().toLowerCase() || '',
+      }))
+      .filter((s) => s.email.length > 0);
 
+    if (normalizedList.length === 0) {
+      return { count: 0, credentials: [] };
+    }
+
+    const uniqueEmails = Array.from(new Set(normalizedList.map((s) => s.email)));
+    const existingEmails = new Set(await AdminRepository.findExistingEmails(uniqueEmails));
+
+    // Filter out existing users and duplicates within the batch
+    const seenInBatch = new Set<string>();
+    const toImport: Array<{ name: string; email: string }> = [];
+    for (const student of normalizedList) {
+      if (!existingEmails.has(student.email) && !seenInBatch.has(student.email)) {
+        seenInBatch.add(student.email);
+        toImport.push(student);
+      }
+    }
+
+    for (const student of toImport) {
       const tempPass = crypto.randomBytes(4).toString('hex') + 'A1!';
       const passwordHash = await bcrypt.hash(tempPass, 10);
 
@@ -280,15 +305,13 @@ export class AdminService {
 
   // ─── Payments ─────────────────────────────────────────────────────────────
   static async getPayments() {
-    const allOrders = await AdminRepository.getPayments();
-    // Deduplicate translations
-    return allOrders.filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i);
+    return AdminRepository.getPayments();
   }
 
   static async issueRefund(orderId: string, adminUserId: string) {
     const updated = await AdminRepository.issueRefund(orderId, adminUserId);
     if (updated.length === 0) {
-      throw new Error('ORDER_NOT_FOUND');
+      throw new NotFoundError('Order not found');
     }
     return { success: true };
   }
@@ -300,7 +323,7 @@ export class AdminService {
     for (const order of uniqueOrders) {
       const escapedName = `"${order.studentName.replace(/"/g, '""')}"`;
       const escapedEmail = `"${order.studentEmail.replace(/"/g, '""')}"`;
-      const escapedTitle = `"${order.courseTitle.replace(/"/g, '""')}"`;
+      const escapedTitle = `"${(order.courseTitle ?? "Untitled Course").replace(/"/g, '""')}"`;
       const escapedTx = order.transactionId ? `"${order.transactionId.replace(/"/g, '""')}"` : '';
       csvContent += `${order.id},${escapedName},${escapedEmail},${escapedTitle},${order.amount},${order.status},${escapedTx},${order.createdAt.toISOString()}\n`;
     }
@@ -328,6 +351,20 @@ export class AdminService {
       bannerEnabled: dbMap['bannerEnabled'] === 'true',
       maintenanceMode: dbMap['maintenanceMode'] === 'true',
       dailyTip: dbMap['dailyTip'] ?? SITE_SETTINGS_DEFAULTS.dailyTip,
+      emailTemplates: {
+        welcome: {
+          subject: dbMap['emailTemplate_welcome_subject'] ?? SITE_SETTINGS_DEFAULTS.emailTemplate_welcome_subject,
+          body: dbMap['emailTemplate_welcome_body'] ?? SITE_SETTINGS_DEFAULTS.emailTemplate_welcome_body,
+        },
+        passwordReset: {
+          subject: dbMap['emailTemplate_passwordReset_subject'] ?? SITE_SETTINGS_DEFAULTS.emailTemplate_passwordReset_subject,
+          body: dbMap['emailTemplate_passwordReset_body'] ?? SITE_SETTINGS_DEFAULTS.emailTemplate_passwordReset_body,
+        },
+        courseEnrolled: {
+          subject: dbMap['emailTemplate_courseEnrolled_subject'] ?? SITE_SETTINGS_DEFAULTS.emailTemplate_courseEnrolled_subject,
+          body: dbMap['emailTemplate_courseEnrolled_body'] ?? SITE_SETTINGS_DEFAULTS.emailTemplate_courseEnrolled_body,
+        },
+      },
     };
   }
 
@@ -337,6 +374,27 @@ export class AdminService {
     if (updates.bannerEnabled !== undefined) entries['bannerEnabled'] = String(updates.bannerEnabled);
     if (updates.maintenanceMode !== undefined) entries['maintenanceMode'] = String(updates.maintenanceMode);
     if (updates.dailyTip !== undefined) entries['dailyTip'] = updates.dailyTip;
+
+    if (updates.emailTemplates) {
+      if (updates.emailTemplates.welcome?.subject !== undefined) {
+        entries['emailTemplate_welcome_subject'] = updates.emailTemplates.welcome.subject;
+      }
+      if (updates.emailTemplates.welcome?.body !== undefined) {
+        entries['emailTemplate_welcome_body'] = updates.emailTemplates.welcome.body;
+      }
+      if (updates.emailTemplates.passwordReset?.subject !== undefined) {
+        entries['emailTemplate_passwordReset_subject'] = updates.emailTemplates.passwordReset.subject;
+      }
+      if (updates.emailTemplates.passwordReset?.body !== undefined) {
+        entries['emailTemplate_passwordReset_body'] = updates.emailTemplates.passwordReset.body;
+      }
+      if (updates.emailTemplates.courseEnrolled?.subject !== undefined) {
+        entries['emailTemplate_courseEnrolled_subject'] = updates.emailTemplates.courseEnrolled.subject;
+      }
+      if (updates.emailTemplates.courseEnrolled?.body !== undefined) {
+        entries['emailTemplate_courseEnrolled_body'] = updates.emailTemplates.courseEnrolled.body;
+      }
+    }
 
     for (const [key, value] of Object.entries(entries)) {
       await AdminRepository.upsertSiteConfigKey(key, value);
@@ -444,29 +502,25 @@ export class AdminService {
   static async uploadLessonFile(id: string, fileData: any) {
     const lessonCheck = await db.select().from(schema.lessons).where(eq(schema.lessons.id, id)).limit(1);
     if (lessonCheck.length === 0) {
-      throw new Error('LESSON_NOT_FOUND');
+      throw new NotFoundError('Lesson not found');
     }
 
-    const ext = path.extname(fileData.filename) || '.pdf';
-    const uniqueName = `${id}_${crypto.randomBytes(4).toString('hex')}${ext}`;
-    const absoluteUploadDir = path.resolve(process.cwd(), serverEnv.UPLOAD_DIR);
-    if (!fs.existsSync(absoluteUploadDir)) {
-      fs.mkdirSync(absoluteUploadDir, { recursive: true });
-    }
-    const savePath = path.join(absoluteUploadDir, uniqueName);
+    const { url } = await storageService.uploadFile({
+      filename: fileData.filename,
+      stream: fileData.file,
+      mimeType: fileData.mimetype,
+      prefix: id,
+    });
 
-    await pipeline(fileData.file, fs.createWriteStream(savePath));
+    await AdminRepository.updateLessonFilePath(id, url);
 
-    const publicUrl = `/public/uploads/${uniqueName}`;
-    await AdminRepository.updateLessonFilePath(id, publicUrl);
-
-    return { filePath: publicUrl };
+    return { filePath: url };
   }
 
   static async reorderLessons(moduleId: string, orderedLessonIds: string[]) {
     const [moduleCheck] = await db.select().from(schema.modules).where(eq(schema.modules.id, moduleId)).limit(1);
     if (!moduleCheck) {
-      throw new Error('MODULE_NOT_FOUND');
+      throw new NotFoundError('Module not found');
     }
 
     await AdminRepository.reorderLessons(orderedLessonIds);
@@ -508,5 +562,18 @@ export class AdminService {
   static async deleteQuestion(id: string) {
     await AdminRepository.deleteQuestion(id);
     return { success: true };
+  }
+
+  static async getAllBadges() {
+    return await AdminRepository.getAllBadges();
+  }
+
+  static async updateBadge(id: string, updates: { name?: string; description?: string; icon?: string; criteriaType?: string; criteriaThreshold?: number }) {
+    const existing = await AdminRepository.getBadgeById(id);
+    if (!existing) {
+      throw new NotFoundError(`Badge with id '${id}' not found`);
+    }
+    const updated = await AdminRepository.updateBadge(id, updates);
+    return updated;
   }
 }

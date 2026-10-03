@@ -102,10 +102,10 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({
           <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Global Rank</p>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-2xl font-black text-slate-900">
-              {rank ? `#${rank}` : 'Top 10%'}
+              {rank != null ? `#${rank}` : '—'}
             </span>
           </div>
-          <p className="text-xs text-slate-600 mt-0.5">Updated hourly</p>
+          <p className="text-xs text-slate-600 mt-0.5">{rank != null ? 'Updated hourly' : 'Complete quizzes to rank'}</p>
         </div>
         <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
           <Trophy className="w-6 h-6" />

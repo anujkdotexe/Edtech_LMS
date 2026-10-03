@@ -321,7 +321,7 @@ export default function AdminCoursesPage() {
                     </td>
                     <td className="py-4 px-6">
                       {c.isPremium && Number(c.price) > 0 ? (
-                        <span className="font-semibold text-slate-800">${Number(c.price).toFixed(2)}</span>
+                        <span className="font-semibold text-slate-800">₹{Number(c.price).toFixed(2)}</span>
                       ) : (
                         <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
                           Free
@@ -431,7 +431,7 @@ export default function AdminCoursesPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Price ($ USD)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Price (₹ INR)</label>
                   <input
                     type="number"
                     step="0.01"
